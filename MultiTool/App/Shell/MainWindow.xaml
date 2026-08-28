@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:audioViews="clr-namespace:MultiTool.Modules.AudioOutputKeepAlive.Views"
         xmlns:microphoneViews="clr-namespace:MultiTool.Modules.MicrophoneKeepAwake.Views"
+        xmlns:mongoViews="clr-namespace:MultiTool.Modules.MongoDbBackup.Views"
         xmlns:powerViews="clr-namespace:MultiTool.Modules.PowerTimer.Views"
         xmlns:reminderViews="clr-namespace:MultiTool.Modules.UsageReminders.Views"
         xmlns:viewModels="clr-namespace:MultiTool.Presentation.ViewModels"
@@ -170,9 +171,7 @@
             </Style.Triggers>
           </Style>
         </Grid.Style>
-        <views:PlaceholderModulePage
-            Title="MongoDB backup"
-            Description="Create compressed MongoDB backup archives from a configured connection." />
+        <mongoViews:MongoDbBackupPage DataContext="{Binding MongoDbBackup}" />
       </Grid>
     </Grid>
   </Grid>

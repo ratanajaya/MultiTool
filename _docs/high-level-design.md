@@ -31,7 +31,7 @@ distribution requirement appears.
 | Audio | NAudio with Windows audio endpoints/WASAPI where appropriate |
 | Notifications | Windows App SDK app notifications behind an abstraction |
 | Configuration | Strongly typed settings persisted as local JSON initially |
-| Secrets | Windows Credential Manager or user-scoped Windows protection |
+| Secrets | Module-specific; MongoDB URIs are never persisted and use an ACL-protected one-run config |
 | Logging | Structured local logs with redaction and retention |
 | Tests | Unit tests plus focused Windows integration tests |
 | Distribution | Unpackaged during development; MSIX evaluated for releases |
@@ -169,8 +169,10 @@ timer duration. The scheduler recalculates after application restart, system
 resume, time-zone change, and clock adjustment.
 
 Settings are written atomically and versioned so migrations can be introduced.
-Secrets are referenced by identifier from settings and stored separately. Logs
-must never include microphone samples, MongoDB passwords, full connection
+Modules that require durable secrets must reference a separate Windows-protected
+store. Module 5 deliberately has no durable secret: its URI is entered for every
+run and exists on disk only in an ACL-protected temporary `mongodump` config.
+Logs must never include microphone samples, MongoDB passwords, full connection
 strings, or secret configuration-file contents.
 
 The first version does not promise execution while MultiTool is exited or no

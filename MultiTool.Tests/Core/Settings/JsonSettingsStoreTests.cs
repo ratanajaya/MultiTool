@@ -1,6 +1,7 @@
 using MultiTool.Core.Settings;
 using MultiTool.Modules.AudioOutputKeepAlive;
 using MultiTool.Modules.MicrophoneKeepAwake;
+using MultiTool.Modules.MongoDbBackup;
 using MultiTool.Modules.PowerTimer;
 using MultiTool.Modules.UsageReminders;
 
@@ -59,6 +60,11 @@ public sealed class JsonSettingsStoreTests
                             Minute = 30
                         }
                     ]
+                },
+                MongoDbBackup = new MongoDbBackupSettings
+                {
+                    MongoDumpExecutablePath = @"C:\MongoDB\mongodump.exe",
+                    LastDestinationFolder = @"D:\Backups"
                 }
             };
 
@@ -74,6 +80,10 @@ public sealed class JsonSettingsStoreTests
                 actual.UsageReminders.Profiles.ToArray());
             Assert.AreEqual(0, actual.UsageReminders.PendingSnoozes.Count);
             Assert.AreEqual(0, actual.UsageReminders.RecentDeliveries.Count);
+            Assert.AreEqual(expected.MongoDbBackup, actual.MongoDbBackup);
+            var json = await File.ReadAllTextAsync(settingsPath);
+            Assert.IsFalse(json.Contains("ConnectionString", StringComparison.OrdinalIgnoreCase));
+            Assert.IsFalse(json.Contains("mongodb://", StringComparison.OrdinalIgnoreCase));
             Assert.IsFalse(File.Exists(settingsPath + ".tmp"));
         }
         finally
@@ -203,6 +213,54 @@ public sealed class JsonSettingsStoreTests
             Assert.IsTrue(actual.AudioOutputKeepAlive.Enabled);
             Assert.IsNotNull(actual.PowerTimer.ActiveSchedule);
             Assert.AreEqual("Custom reminder", actual.UsageReminders.Profiles.Single().Name);
+        }
+        finally
+        {
+            if (Directory.Exists(testDirectory))
+            {
+                Directory.Delete(testDirectory, recursive: true);
+            }
+        }
+    }
+
+    [TestMethod]
+    public async Task MongoDbBackupSettingsStore_PreservesOtherModulesAndHasNoSecretField()
+    {
+        var testDirectory = Path.Combine(
+            Path.GetTempPath(),
+            "MultiTool.Tests",
+            Guid.NewGuid().ToString("N"));
+        var settingsPath = Path.Combine(testDirectory, "settings.json");
+
+        try
+        {
+            var store = new JsonSettingsStore(settingsPath);
+            await store.SaveAsync(new MultiToolSettings
+            {
+                AudioOutputKeepAlive = new AudioOutputKeepAliveSettings { Enabled = true },
+                UsageReminders = new UsageReminderSettings
+                {
+                    Profiles = [new UsageReminderProfile { Name = "Keep me" }]
+                }
+            });
+            var backupStore = new JsonMongoDbBackupSettingsStore(store);
+
+            await backupStore.SaveAsync(new MongoDbBackupSettings
+            {
+                MongoDumpExecutablePath = @"C:\MongoDB\mongodump.exe",
+                LastDestinationFolder = @"D:\Backups"
+            });
+            var actual = await store.LoadAsync();
+
+            Assert.IsTrue(actual.AudioOutputKeepAlive.Enabled);
+            Assert.AreEqual("Keep me", actual.UsageReminders.Profiles.Single().Name);
+            Assert.AreEqual(@"C:\MongoDB\mongodump.exe", actual.MongoDbBackup.MongoDumpExecutablePath);
+            CollectionAssert.AreEquivalent(
+                new[] { "MongoDumpExecutablePath", "LastDestinationFolder" },
+                typeof(MongoDbBackupSettings).GetProperties().Select(property => property.Name).ToArray());
+            var json = await File.ReadAllTextAsync(settingsPath);
+            Assert.IsFalse(json.Contains("ConnectionString", StringComparison.OrdinalIgnoreCase));
+            Assert.IsFalse(json.Contains("Password", StringComparison.OrdinalIgnoreCase));
         }
         finally
         {

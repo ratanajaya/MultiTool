@@ -1,5 +1,6 @@
 using MultiTool.Modules.AudioOutputKeepAlive;
 using MultiTool.Modules.MicrophoneKeepAwake;
+using MultiTool.Modules.MongoDbBackup;
 using MultiTool.Modules.PowerTimer;
 using MultiTool.Modules.UsageReminders;
 
@@ -16,4 +17,6 @@ public sealed record MultiToolSettings
     public PowerTimerSettings PowerTimer { get; init; } = new();
 
     public UsageReminderSettings UsageReminders { get; init; } = new();
+
+    public MongoDbBackupSettings MongoDbBackup { get; init; } = new();
 }

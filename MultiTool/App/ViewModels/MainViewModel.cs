@@ -34,7 +34,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
         JsonSettingsStore settingsStore,
         MicrophoneKeepAwakeViewModel microphone,
         PowerTimerViewModel powerTimer,
-        UsageReminderViewModel usageReminders)
+        UsageReminderViewModel usageReminders,
+        MongoDbBackupViewModel mongoDbBackup)
     {
         _module = module;
         _settingsStore = settingsStore;
@@ -42,6 +43,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         Microphone = microphone;
         PowerTimer = powerTimer;
         UsageReminders = usageReminders;
+        MongoDbBackup = mongoDbBackup;
         _module.StatusChanged += HandleStatusChanged;
 
         NavigationItems = ModuleNavigationItem.CreateDefaultNavigation();
@@ -62,6 +64,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public PowerTimerViewModel PowerTimer { get; }
 
     public UsageReminderViewModel UsageReminders { get; }
+
+    public MongoDbBackupViewModel MongoDbBackup { get; }
 
     public IReadOnlyList<ModuleNavigationItem> NavigationItems { get; }
 
@@ -164,6 +168,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         await Microphone.InitializeAsync(settings.MicrophoneKeepAwake);
         await PowerTimer.InitializeAsync(settings.PowerTimer);
         await UsageReminders.InitializeAsync(settings.UsageReminders);
+        await MongoDbBackup.InitializeAsync(settings.MongoDbBackup);
     }
 
     public async Task ShutdownAsync()
@@ -171,23 +176,30 @@ public sealed class MainViewModel : INotifyPropertyChanged
         _module.StatusChanged -= HandleStatusChanged;
         try
         {
-            await UsageReminders.ShutdownAsync();
+            await PowerTimer.ShutdownAsync();
         }
         finally
         {
             try
             {
-                await PowerTimer.ShutdownAsync();
+                await MongoDbBackup.ShutdownAsync();
             }
             finally
             {
                 try
                 {
-                    await _module.DisposeAsync();
+                    await UsageReminders.ShutdownAsync();
                 }
                 finally
                 {
-                    await Microphone.ShutdownAsync();
+                    try
+                    {
+                        await _module.DisposeAsync();
+                    }
+                    finally
+                    {
+                        await Microphone.ShutdownAsync();
+                    }
                 }
             }
         }

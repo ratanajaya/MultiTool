@@ -24,6 +24,6 @@ public sealed class ModuleNavigationItemTests
         Assert.AreEqual("Available", navigation[1].Availability);
         Assert.AreEqual("Available", navigation[2].Availability);
         Assert.AreEqual("Available", navigation[3].Availability);
-        Assert.AreEqual("Planned", navigation[4].Availability);
+        Assert.AreEqual("Available", navigation[4].Availability);
     }
 }

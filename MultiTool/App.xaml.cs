@@ -7,6 +7,7 @@ using MultiTool.Core.Scheduling;
 using MultiTool.Core.Settings;
 using MultiTool.Modules.AudioOutputKeepAlive;
 using MultiTool.Modules.MicrophoneKeepAwake;
+using MultiTool.Modules.MongoDbBackup;
 using MultiTool.Modules.PowerTimer;
 using MultiTool.Modules.UsageReminders;
 using MultiTool.Platform.Windows;
@@ -64,12 +65,20 @@ public partial class App : System.Windows.Application
             var usageReminderViewModel = new UsageReminderViewModel(
                 usageReminderModule,
                 new WindowsConfirmationService());
+            var mongoDbBackupModule = new MongoDbBackupService(
+                new WindowsMongoDumpRunner(),
+                new JsonMongoDbBackupSettingsStore(settingsStore),
+                _trayIcon);
+            var mongoDbBackupViewModel = new MongoDbBackupViewModel(
+                mongoDbBackupModule,
+                new WindowsMongoDbBackupFileDialogService());
             _viewModel = new MainViewModel(
                 module,
                 settingsStore,
                 microphoneViewModel,
                 powerTimerViewModel,
-                usageReminderViewModel);
+                usageReminderViewModel,
+                mongoDbBackupViewModel);
             _mainWindow = new MainWindow(_viewModel);
             _mainWindow.Closing += HandleWindowClosing;
 
@@ -106,10 +115,17 @@ public partial class App : System.Windows.Application
             return;
         }
 
-        if (_viewModel?.PowerTimer.HasActiveTimer == true)
+        var hasPowerTimer = _viewModel?.PowerTimer.HasActiveTimer == true;
+        var hasMongoDbBackup = _viewModel?.MongoDbBackup.IsActive == true;
+        if (hasPowerTimer || hasMongoDbBackup)
         {
+            var activeWork = hasPowerTimer && hasMongoDbBackup
+                ? "the active power timer and MongoDB backup"
+                : hasPowerTimer
+                    ? "the active power timer"
+                    : "the active MongoDB backup";
             var result = System.Windows.MessageBox.Show(
-                "Exiting MultiTool will cancel the active power timer. Exit?",
+                $"Exiting MultiTool will cancel {activeWork}. Exit?",
                 "Exit MultiTool",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Warning,
@@ -145,6 +161,7 @@ public partial class App : System.Windows.Application
             _viewModel?.NavigateTo(eventArgs.Context switch
             {
                 "UsageReminders" => ModulePage.UsageReminders,
+                "MongoDbBackup" => ModulePage.MongoDbBackup,
                 _ => ModulePage.PowerTimer
             });
             ShowMainWindow();
