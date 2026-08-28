@@ -31,11 +31,13 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     public MainViewModel(
         AudioOutputKeepAliveService module,
-        JsonSettingsStore settingsStore)
+        JsonSettingsStore settingsStore,
+        MicrophoneKeepAwakeViewModel microphone)
     {
         _module = module;
         _settingsStore = settingsStore;
         _dispatcher = Dispatcher.CurrentDispatcher;
+        Microphone = microphone;
         _module.StatusChanged += HandleStatusChanged;
 
         NavigationItems = ModuleNavigationItem.CreateDefaultNavigation();
@@ -50,6 +52,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public ObservableCollection<AudioOutputDeviceOption> OutputDevices { get; } = [];
+
+    public MicrophoneKeepAwakeViewModel Microphone { get; }
 
     public IReadOnlyList<ModuleNavigationItem> NavigationItems { get; }
 
@@ -142,21 +146,27 @@ public sealed class MainViewModel : INotifyPropertyChanged
         {
             Message = $"Saved settings are invalid: {string.Join(" ", errors)}";
             IsEnabled = false;
-            return;
         }
-
-        if (moduleSettings.Enabled)
+        else if (moduleSettings.Enabled)
         {
             await _module.StartAsync(moduleSettings);
         }
 
         RefreshRuntimeStatus();
+        await Microphone.InitializeAsync(settings.MicrophoneKeepAwake);
     }
 
     public async Task ShutdownAsync()
     {
         _module.StatusChanged -= HandleStatusChanged;
-        await _module.DisposeAsync();
+        try
+        {
+            await _module.DisposeAsync();
+        }
+        finally
+        {
+            await Microphone.ShutdownAsync();
+        }
     }
 
     private async Task ApplyAsync()
@@ -265,7 +275,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     }
 
     private Task SaveAsync(AudioOutputKeepAliveSettings moduleSettings) =>
-        _settingsStore.SaveAsync(new MultiToolSettings
+        _settingsStore.UpdateAsync(settings => settings with
         {
             AudioOutputKeepAlive = moduleSettings
         });

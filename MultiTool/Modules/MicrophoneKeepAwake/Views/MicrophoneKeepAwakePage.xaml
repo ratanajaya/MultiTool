@@ -1,0 +1,87 @@
+<UserControl x:Class="MultiTool.Modules.MicrophoneKeepAwake.Views.MicrophoneKeepAwakePage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel Margin="32">
+      <DockPanel Margin="0,0,0,22">
+        <StackPanel DockPanel.Dock="Left">
+          <TextBlock Text="Microphone keep-awake" FontSize="26" FontWeight="SemiBold" />
+          <TextBlock Text="Keeps a microphone capture stream open and discards every audio buffer."
+                     Foreground="#4B5563" Margin="0,5,0,0" />
+        </StackPanel>
+        <Border DockPanel.Dock="Right"
+                Background="#E5E7EB"
+                CornerRadius="12"
+                Padding="12,5"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Top">
+          <TextBlock Text="{Binding Status}" FontWeight="SemiBold" />
+        </Border>
+      </DockPanel>
+
+      <Border Padding="24" Background="White" CornerRadius="10">
+        <StackPanel>
+          <CheckBox Content="Enable and start automatically with MultiTool"
+                    IsChecked="{Binding IsEnabled}"
+                    Margin="0,0,0,8" />
+          <TextBlock Text="Privacy: audio is never saved, analyzed, logged, or transmitted. Windows may show its microphone-in-use indicator while this module runs."
+                     Foreground="#4B5563"
+                     FontSize="12"
+                     TextWrapping="Wrap"
+                     Margin="24,0,0,20" />
+
+          <TextBlock Text="Microphone" FontWeight="SemiBold" />
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <ComboBox Grid.Column="0"
+                      ItemsSource="{Binding InputDevices}"
+                      SelectedItem="{Binding SelectedDevice}"
+                      DisplayMemberPath="DisplayName" />
+            <Button Grid.Column="1"
+                    Content="Refresh"
+                    Command="{Binding RefreshDevicesCommand}"
+                    Margin="8,4,0,12" />
+          </Grid>
+
+          <CheckBox Content="Restart automatically after a microphone or default-device change"
+                    IsChecked="{Binding RestartOnDeviceChange}"
+                    Margin="0,2,0,18" />
+
+          <StackPanel Orientation="Horizontal">
+            <Button Content="Apply"
+                    Command="{Binding ApplyCommand}"
+                    Background="{StaticResource AccentBrush}"
+                    Foreground="White"
+                    BorderBrush="{StaticResource AccentBrush}" />
+            <Button Content="{Binding StartStopLabel}" Command="{Binding StartStopCommand}" />
+            <Button Content="Open microphone privacy settings"
+                    Command="{Binding OpenPrivacySettingsCommand}" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+
+      <Border Margin="0,16,0,0" Padding="18" Background="White" CornerRadius="10">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+          <StackPanel Grid.Column="0" Margin="0,0,28,0">
+            <TextBlock Text="Capture started" FontWeight="SemiBold" />
+            <TextBlock Text="{Binding StartedAt}" Foreground="#4B5563" Margin="0,3,0,0" />
+          </StackPanel>
+          <StackPanel Grid.Column="1">
+            <TextBlock Text="Activity" FontWeight="SemiBold" />
+            <TextBlock Text="{Binding Message}"
+                       Foreground="#4B5563"
+                       Margin="0,3,0,0"
+                       TextWrapping="Wrap" />
+          </StackPanel>
+        </Grid>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

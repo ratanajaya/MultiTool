@@ -44,11 +44,38 @@ trigger permission prompts.
 
 ## Acceptance boundary
 
-The deliverable is complete when capture can run continuously, all sample data
-is demonstrably discarded, start/stop is reliable, denied permission is clearly
-reported, and device disconnection does not crash the application.
+The software acceptance boundary is met: capture runs continuously through the
+selected or default multimedia endpoint, sample callbacks discard their
+buffers without reading them, start and stop are cancellation-aware, permission
+denial is actionable, and device loss is isolated to this module.
 
-Automated tests cover lifecycle, permission states, cancellation, and endpoint
-changes using a fake capture adapter. Privacy behavior, power-saving prevention,
-and long-running resource use require documented manual tests.
+Automated tests cover lifecycle, cancellation, permission denial, endpoint-loss
+policy, bounded recovery, idempotency, settings validation, navigation, and
+cross-module settings persistence. The following hardware and privacy checks
+remain release validation:
 
+1. Grant microphone access, start the module, and confirm Windows shows the
+   expected microphone-in-use indicator while capture remains active.
+2. Run for an extended period and confirm buffers are not written to disk or
+   retained in memory and resource use does not grow without bound.
+3. Disable microphone privacy access and confirm the module faults once without
+   repeated prompts; confirm the privacy-settings button opens the correct page.
+4. Unplug an explicitly selected microphone with automatic restart both enabled
+   and disabled, and confirm the configured behavior.
+5. Follow the default microphone, change that Windows default,
+   and confirm capture restarts against the new endpoint.
+6. Confirm the target device stays awake on representative USB, Bluetooth, and
+   built-in microphone hardware.
+
+## Implementation
+
+Production code is in `MultiTool/Modules/MicrophoneKeepAwake`. The NAudio/WASAPI
+adapter and Windows privacy-settings launcher are in `MultiTool/Platform/Windows`.
+The adapter registers for endpoint notifications, immediately discards every
+`DataAvailable` buffer, and never exposes sample data to the module layer.
+
+Recovery is deliberately bounded to three capture attempts with a three-second
+delay. Access denial never retries. When automatic restart after device changes
+is disabled, endpoint removal immediately remains faulted until the user starts
+the module again. Settings share `%LOCALAPPDATA%\MultiTool\settings.json` and are
+merged atomically with settings belonging to other modules.

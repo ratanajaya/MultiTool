@@ -6,6 +6,7 @@ using MultiTool.Presentation.ViewModels;
 using MultiTool.Core.Scheduling;
 using MultiTool.Core.Settings;
 using MultiTool.Modules.AudioOutputKeepAlive;
+using MultiTool.Modules.MicrophoneKeepAwake;
 using MultiTool.Platform.Windows;
 
 namespace MultiTool;
@@ -23,10 +24,18 @@ public partial class App : System.Windows.Application
 
         try
         {
+            var settingsStore = new JsonSettingsStore();
             var module = new AudioOutputKeepAliveService(
                 new NAudioOutputService(),
                 new SystemAsyncDelay());
-            _viewModel = new MainViewModel(module, new JsonSettingsStore());
+            var microphoneModule = new MicrophoneKeepAwakeService(
+                new NAudioCaptureService(),
+                new SystemAsyncDelay());
+            var microphoneViewModel = new MicrophoneKeepAwakeViewModel(
+                microphoneModule,
+                settingsStore,
+                new WindowsMicrophonePrivacySettingsLauncher());
+            _viewModel = new MainViewModel(module, settingsStore, microphoneViewModel);
             _mainWindow = new MainWindow(_viewModel);
             _mainWindow.Closing += HandleWindowClosing;
             _trayIcon = new TrayIcon(_mainWindow, ExitAsync);

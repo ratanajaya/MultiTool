@@ -12,6 +12,7 @@ public sealed class JsonSettingsStore
     };
 
     private readonly string _filePath;
+    private readonly SemaphoreSlim _writeGate = new(1, 1);
 
     public JsonSettingsStore(string? filePath = null)
     {
@@ -37,6 +38,39 @@ public sealed class JsonSettingsStore
     }
 
     public async Task SaveAsync(MultiToolSettings settings, CancellationToken cancellationToken = default)
+    {
+        await _writeGate.WaitAsync(cancellationToken);
+        try
+        {
+            await SaveCoreAsync(settings, cancellationToken);
+        }
+        finally
+        {
+            _writeGate.Release();
+        }
+    }
+
+    public async Task UpdateAsync(
+        Func<MultiToolSettings, MultiToolSettings> update,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(update);
+
+        await _writeGate.WaitAsync(cancellationToken);
+        try
+        {
+            var settings = await LoadAsync(cancellationToken);
+            await SaveCoreAsync(update(settings), cancellationToken);
+        }
+        finally
+        {
+            _writeGate.Release();
+        }
+    }
+
+    private async Task SaveCoreAsync(
+        MultiToolSettings settings,
+        CancellationToken cancellationToken)
     {
         var directory = Path.GetDirectoryName(_filePath)
             ?? throw new InvalidOperationException("The settings path has no parent directory.");
