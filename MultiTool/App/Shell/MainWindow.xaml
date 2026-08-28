@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:audioViews="clr-namespace:MultiTool.Modules.AudioOutputKeepAlive.Views"
         xmlns:microphoneViews="clr-namespace:MultiTool.Modules.MicrophoneKeepAwake.Views"
+        xmlns:powerViews="clr-namespace:MultiTool.Modules.PowerTimer.Views"
         xmlns:viewModels="clr-namespace:MultiTool.Presentation.ViewModels"
         xmlns:views="clr-namespace:MultiTool.Presentation.Views"
         Title="MultiTool"
@@ -138,9 +139,7 @@
             </Style.Triggers>
           </Style>
         </Grid.Style>
-        <views:PlaceholderModulePage
-            Title="Power timer"
-            Description="Schedule shutdown, sleep, or hibernate actions with a warning and cancellation period." />
+        <powerViews:PowerTimerPage DataContext="{Binding PowerTimer}" />
       </Grid>
 
       <Grid>

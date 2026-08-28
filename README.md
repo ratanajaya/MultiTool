@@ -1,8 +1,9 @@
 # MultiTool
 
 MultiTool is a Windows tray application for small background utilities. The
-completed audio modules can periodically play a near-silent output burst and
-hold a microphone capture stream open to prevent device power saving.
+completed modules can periodically play a near-silent output burst, hold a
+microphone capture stream open to prevent device power saving, and schedule one
+shutdown, sleep, or hibernate action.
 
 ## Requirements
 

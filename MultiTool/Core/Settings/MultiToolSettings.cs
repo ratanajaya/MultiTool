@@ -1,5 +1,6 @@
 using MultiTool.Modules.AudioOutputKeepAlive;
 using MultiTool.Modules.MicrophoneKeepAwake;
+using MultiTool.Modules.PowerTimer;
 
 namespace MultiTool.Core.Settings;
 
@@ -10,4 +11,6 @@ public sealed record MultiToolSettings
     public AudioOutputKeepAliveSettings AudioOutputKeepAlive { get; init; } = new();
 
     public MicrophoneKeepAwakeSettings MicrophoneKeepAwake { get; init; } = new();
+
+    public PowerTimerSettings PowerTimer { get; init; } = new();
 }

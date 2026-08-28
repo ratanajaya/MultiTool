@@ -7,7 +7,9 @@ using MultiTool.Core.Scheduling;
 using MultiTool.Core.Settings;
 using MultiTool.Modules.AudioOutputKeepAlive;
 using MultiTool.Modules.MicrophoneKeepAwake;
+using MultiTool.Modules.PowerTimer;
 using MultiTool.Platform.Windows;
+using MultiTool.Presentation.Dialogs;
 
 namespace MultiTool;
 
@@ -25,6 +27,8 @@ public partial class App : System.Windows.Application
         try
         {
             var settingsStore = new JsonSettingsStore();
+            _trayIcon = new TrayIcon(ShowMainWindow, ExitAsync);
+            _trayIcon.NotificationActivated += HandleNotificationActivated;
             var module = new AudioOutputKeepAliveService(
                 new NAudioOutputService(),
                 new SystemAsyncDelay());
@@ -35,10 +39,25 @@ public partial class App : System.Windows.Application
                 microphoneModule,
                 settingsStore,
                 new WindowsMicrophonePrivacySettingsLauncher());
-            _viewModel = new MainViewModel(module, settingsStore, microphoneViewModel);
+            var clock = new SystemClock();
+            var powerTimerModule = new PowerTimerService(
+                new WindowsPowerActionService(),
+                _trayIcon,
+                new JsonPowerTimerScheduleStore(settingsStore),
+                clock,
+                new SystemAsyncDelay(),
+                new WindowsSystemTimeEvents());
+            var powerTimerViewModel = new PowerTimerViewModel(
+                powerTimerModule,
+                new WindowsConfirmationService(),
+                clock);
+            _viewModel = new MainViewModel(
+                module,
+                settingsStore,
+                microphoneViewModel,
+                powerTimerViewModel);
             _mainWindow = new MainWindow(_viewModel);
             _mainWindow.Closing += HandleWindowClosing;
-            _trayIcon = new TrayIcon(_mainWindow, ExitAsync);
 
             await _viewModel.InitializeAsync();
             _mainWindow.Show();
@@ -50,6 +69,7 @@ public partial class App : System.Windows.Application
                 "MultiTool",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
+            _trayIcon?.Dispose();
             Shutdown(1);
         }
     }
@@ -72,6 +92,20 @@ public partial class App : System.Windows.Application
             return;
         }
 
+        if (_viewModel?.PowerTimer.HasActiveTimer == true)
+        {
+            var result = System.Windows.MessageBox.Show(
+                "Exiting MultiTool will cancel the active power timer. Exit?",
+                "Exit MultiTool",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning,
+                MessageBoxResult.No);
+            if (result != MessageBoxResult.Yes)
+            {
+                return;
+            }
+        }
+
         _isExiting = true;
         if (_viewModel is not null)
         {
@@ -81,5 +115,38 @@ public partial class App : System.Windows.Application
         _trayIcon?.Dispose();
         _mainWindow?.Close();
         Shutdown();
+    }
+
+    private void HandleNotificationActivated(object? sender, EventArgs eventArgs)
+    {
+        if (_mainWindow is null)
+        {
+            return;
+        }
+
+        _mainWindow.Dispatcher.BeginInvoke(() =>
+        {
+            _viewModel?.NavigateTo(ModulePage.PowerTimer);
+            ShowMainWindow();
+        });
+    }
+
+    private void ShowMainWindow()
+    {
+        if (_mainWindow is null)
+        {
+            return;
+        }
+
+        _mainWindow.Dispatcher.Invoke(() =>
+        {
+            _mainWindow.Show();
+            if (_mainWindow.WindowState == WindowState.Minimized)
+            {
+                _mainWindow.WindowState = WindowState.Normal;
+            }
+
+            _mainWindow.Activate();
+        });
     }
 }

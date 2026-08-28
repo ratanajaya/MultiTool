@@ -22,6 +22,7 @@ public sealed class ModuleNavigationItemTests
             navigation.Select(item => item.Page).ToArray());
         Assert.AreEqual("Available", navigation[0].Availability);
         Assert.AreEqual("Available", navigation[1].Availability);
-        Assert.IsTrue(navigation.Skip(2).All(item => item.Availability == "Planned"));
+        Assert.AreEqual("Available", navigation[2].Availability);
+        Assert.IsTrue(navigation.Skip(3).All(item => item.Availability == "Planned"));
     }
 }

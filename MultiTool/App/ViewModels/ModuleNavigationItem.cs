@@ -9,7 +9,7 @@ public sealed record ModuleNavigationItem(
     [
         new(ModulePage.AudioOutputKeepAlive, "Audio output keep-alive", "Available"),
         new(ModulePage.MicrophoneKeepAwake, "Microphone keep-awake", "Available"),
-        new(ModulePage.PowerTimer, "Power timer", "Planned"),
+        new(ModulePage.PowerTimer, "Power timer", "Available"),
         new(ModulePage.UsageReminders, "Usage reminders", "Planned"),
         new(ModulePage.MongoDbBackup, "MongoDB backup", "Planned")
     ];

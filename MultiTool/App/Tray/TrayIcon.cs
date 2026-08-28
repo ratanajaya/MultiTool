@@ -1,20 +1,20 @@
 using System.Drawing;
 using Forms = System.Windows.Forms;
-using MultiTool.Presentation.Shell;
+using MultiTool.Core.Notifications;
 
 namespace MultiTool.Presentation.Tray;
 
-internal sealed class TrayIcon : IDisposable
+internal sealed class TrayIcon : INotificationService, IDisposable
 {
-    private readonly MainWindow _window;
+    private readonly Action _openRequested;
     private readonly Forms.NotifyIcon _notifyIcon;
 
-    public TrayIcon(MainWindow window, Func<Task> exitAsync)
+    public TrayIcon(Action openRequested, Func<Task> exitAsync)
     {
-        _window = window;
+        _openRequested = openRequested;
 
         var menu = new Forms.ContextMenuStrip();
-        menu.Items.Add("Open MultiTool", null, (_, _) => ShowWindow());
+        menu.Items.Add("Open MultiTool", null, (_, _) => _openRequested());
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add("Exit", null, async (_, _) => await exitAsync());
 
@@ -25,20 +25,21 @@ internal sealed class TrayIcon : IDisposable
             ContextMenuStrip = menu,
             Visible = true
         };
-        _notifyIcon.DoubleClick += (_, _) => ShowWindow();
+        _notifyIcon.DoubleClick += (_, _) => _openRequested();
+        _notifyIcon.BalloonTipClicked += (_, _) => NotificationActivated?.Invoke(this, EventArgs.Empty);
     }
 
-    private void ShowWindow()
-    {
-        _window.Dispatcher.Invoke(() =>
-        {
-            _window.Show();
-            if (_window.WindowState == System.Windows.WindowState.Minimized)
-            {
-                _window.WindowState = System.Windows.WindowState.Normal;
-            }
+    public event EventHandler? NotificationActivated;
 
-            _window.Activate();
+    public void Show(string title, string message)
+    {
+        System.Windows.Application.Current.Dispatcher.BeginInvoke(() =>
+        {
+            _notifyIcon.ShowBalloonTip(
+                10_000,
+                title,
+                message,
+                Forms.ToolTipIcon.Warning);
         });
     }
 

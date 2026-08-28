@@ -32,12 +32,14 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public MainViewModel(
         AudioOutputKeepAliveService module,
         JsonSettingsStore settingsStore,
-        MicrophoneKeepAwakeViewModel microphone)
+        MicrophoneKeepAwakeViewModel microphone,
+        PowerTimerViewModel powerTimer)
     {
         _module = module;
         _settingsStore = settingsStore;
         _dispatcher = Dispatcher.CurrentDispatcher;
         Microphone = microphone;
+        PowerTimer = powerTimer;
         _module.StatusChanged += HandleStatusChanged;
 
         NavigationItems = ModuleNavigationItem.CreateDefaultNavigation();
@@ -54,6 +56,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public ObservableCollection<AudioOutputDeviceOption> OutputDevices { get; } = [];
 
     public MicrophoneKeepAwakeViewModel Microphone { get; }
+
+    public PowerTimerViewModel PowerTimer { get; }
 
     public IReadOnlyList<ModuleNavigationItem> NavigationItems { get; }
 
@@ -154,6 +158,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
         RefreshRuntimeStatus();
         await Microphone.InitializeAsync(settings.MicrophoneKeepAwake);
+        await PowerTimer.InitializeAsync(settings.PowerTimer);
     }
 
     public async Task ShutdownAsync()
@@ -161,11 +166,27 @@ public sealed class MainViewModel : INotifyPropertyChanged
         _module.StatusChanged -= HandleStatusChanged;
         try
         {
-            await _module.DisposeAsync();
+            await PowerTimer.ShutdownAsync();
         }
         finally
         {
-            await Microphone.ShutdownAsync();
+            try
+            {
+                await _module.DisposeAsync();
+            }
+            finally
+            {
+                await Microphone.ShutdownAsync();
+            }
+        }
+    }
+
+    public void NavigateTo(ModulePage page)
+    {
+        var item = NavigationItems.FirstOrDefault(candidate => candidate.Page == page);
+        if (item is not null)
+        {
+            SelectedNavigationItem = item;
         }
     }
 
