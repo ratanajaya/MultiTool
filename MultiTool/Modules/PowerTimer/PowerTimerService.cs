@@ -318,7 +318,8 @@ public sealed class PowerTimerService : IAsyncDisposable
             {
                 _notifications.Show(
                     "MultiTool power timer",
-                    $"{GetActionName(schedule.Action)} in 1 minute. Open MultiTool to cancel.");
+                    $"{GetActionName(schedule.Action)} in 1 minute. Open MultiTool to cancel.",
+                    "PowerTimer");
             }
             catch (Exception exception)
             {

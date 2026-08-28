@@ -1,0 +1,172 @@
+<UserControl x:Class="MultiTool.Modules.UsageReminders.Views.UsageRemindersPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel Margin="32">
+      <TextBlock Text="Usage reminders" FontSize="26" FontWeight="SemiBold" />
+      <TextBlock Text="Create gentle, persistent reminders to wrap up and sign off."
+                 Foreground="#4B5563" Margin="0,5,0,22" />
+
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="260" />
+          <ColumnDefinition Width="16" />
+          <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <Border Grid.Column="0" Padding="16" Background="White" CornerRadius="10">
+          <DockPanel>
+            <Button DockPanel.Dock="Bottom"
+                    Content="New reminder"
+                    Command="{Binding NewCommand}"
+                    Margin="0,14,0,0" />
+            <ListBox ItemsSource="{Binding Profiles}"
+                     SelectedItem="{Binding SelectedProfile}"
+                     BorderThickness="0"
+                     Background="Transparent">
+              <ListBox.ItemTemplate>
+                <DataTemplate>
+                  <StackPanel Margin="4,7">
+                    <DockPanel>
+                      <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                      <TextBlock Text="{Binding State}"
+                                 DockPanel.Dock="Right"
+                                 Foreground="#6B7280"
+                                 FontSize="11" />
+                    </DockPanel>
+                    <TextBlock Text="{Binding Schedule}" Foreground="#4B5563" FontSize="12" />
+                    <TextBlock Text="{Binding NextOccurrence, StringFormat=Next: {0}}"
+                               Foreground="#6B7280"
+                               FontSize="11"
+                               TextWrapping="Wrap" />
+                  </StackPanel>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </DockPanel>
+        </Border>
+
+        <Border Grid.Column="2" Padding="22" Background="White" CornerRadius="10">
+          <StackPanel>
+            <DockPanel Margin="0,0,0,10">
+              <CheckBox DockPanel.Dock="Right"
+                        Content="Enabled"
+                        IsChecked="{Binding IsEnabled}"
+                        VerticalAlignment="Center" />
+              <TextBlock Text="Reminder details" FontSize="18" FontWeight="SemiBold" />
+            </DockPanel>
+
+            <TextBlock Text="Name" FontWeight="SemiBold" />
+            <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" />
+
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="12" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <StackPanel Grid.Column="0">
+                <TextBlock Text="Hour" FontWeight="SemiBold" />
+                <ComboBox ItemsSource="{Binding Hours}" SelectedItem="{Binding Hour}" />
+              </StackPanel>
+              <StackPanel Grid.Column="2">
+                <TextBlock Text="Minute" FontWeight="SemiBold" />
+                <ComboBox ItemsSource="{Binding Minutes}" SelectedItem="{Binding Minute}" />
+              </StackPanel>
+            </Grid>
+
+            <TextBlock Text="Active days" FontWeight="SemiBold" Margin="0,0,0,7" />
+            <WrapPanel Margin="0,0,0,14">
+              <CheckBox Content="Mon" IsChecked="{Binding Monday}" Margin="0,0,13,0" />
+              <CheckBox Content="Tue" IsChecked="{Binding Tuesday}" Margin="0,0,13,0" />
+              <CheckBox Content="Wed" IsChecked="{Binding Wednesday}" Margin="0,0,13,0" />
+              <CheckBox Content="Thu" IsChecked="{Binding Thursday}" Margin="0,0,13,0" />
+              <CheckBox Content="Fri" IsChecked="{Binding Friday}" Margin="0,0,13,0" />
+              <CheckBox Content="Sat" IsChecked="{Binding Saturday}" Margin="0,0,13,0" />
+              <CheckBox Content="Sun" IsChecked="{Binding Sunday}" />
+            </WrapPanel>
+
+            <TextBlock Text="Card title" FontWeight="SemiBold" />
+            <TextBox Text="{Binding Title, UpdateSourceTrigger=PropertyChanged}" />
+            <TextBlock Text="Message" FontWeight="SemiBold" />
+            <TextBox Text="{Binding ReminderMessage, UpdateSourceTrigger=PropertyChanged}"
+                     MinHeight="64"
+                     TextWrapping="Wrap"
+                     AcceptsReturn="True" />
+
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="12" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <StackPanel Grid.Column="0">
+                <TextBlock Text="Snooze" FontWeight="SemiBold" />
+                <ComboBox ItemsSource="{Binding SnoozeOptions}"
+                          SelectedItem="{Binding SnoozeMinutes}" />
+              </StackPanel>
+              <StackPanel Grid.Column="2">
+                <TextBlock Text="Missed-reminder grace (minutes)" FontWeight="SemiBold" />
+                <TextBox Text="{Binding GracePeriodMinutes, UpdateSourceTrigger=PropertyChanged}" />
+              </StackPanel>
+            </Grid>
+
+            <StackPanel Margin="0,0,0,16">
+              <CheckBox Content="Show persistent corner card"
+                        IsChecked="{Binding ShowCornerCard}"
+                        Margin="0,0,0,6" />
+              <CheckBox Content="Also send a Windows notification"
+                        IsChecked="{Binding ShowWindowsNotification}" />
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal">
+              <Button Content="Save reminder"
+                      Command="{Binding SaveCommand}"
+                      Background="{StaticResource AccentBrush}"
+                      BorderBrush="{StaticResource AccentBrush}"
+                      Foreground="White" />
+              <Button Content="Preview" Command="{Binding PreviewCommand}" />
+              <Button Content="Delete" Command="{Binding DeleteCommand}" />
+            </StackPanel>
+          </StackPanel>
+        </Border>
+      </Grid>
+
+      <Border Margin="0,16,0,0" Padding="18" Background="White" CornerRadius="10">
+        <StackPanel>
+          <TextBlock Text="Activity" FontWeight="SemiBold" />
+          <TextBlock Text="{Binding Activity}"
+                     Margin="0,4,0,0"
+                     Foreground="#4B5563"
+                     TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
+
+      <Border Margin="0,16,0,0" Padding="18" Background="White" CornerRadius="10">
+        <StackPanel>
+          <TextBlock Text="Recent delivery history" FontSize="17" FontWeight="SemiBold" />
+          <TextBlock Text="The latest 20 delivered, acknowledged, snoozed, and missed occurrences."
+                     Margin="0,3,0,10"
+                     Foreground="#6B7280"
+                     FontSize="12" />
+          <ItemsControl ItemsSource="{Binding RecentHistory}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Grid Margin="0,5">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="170" />
+                    <ColumnDefinition Width="100" />
+                  </Grid.ColumnDefinitions>
+                  <TextBlock Grid.Column="0" Text="{Binding Name}" />
+                  <TextBlock Grid.Column="1" Text="{Binding Time}" Foreground="#4B5563" />
+                  <TextBlock Grid.Column="2" Text="{Binding Status}" Foreground="#4B5563" />
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

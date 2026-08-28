@@ -33,13 +33,15 @@ public sealed class MainViewModel : INotifyPropertyChanged
         AudioOutputKeepAliveService module,
         JsonSettingsStore settingsStore,
         MicrophoneKeepAwakeViewModel microphone,
-        PowerTimerViewModel powerTimer)
+        PowerTimerViewModel powerTimer,
+        UsageReminderViewModel usageReminders)
     {
         _module = module;
         _settingsStore = settingsStore;
         _dispatcher = Dispatcher.CurrentDispatcher;
         Microphone = microphone;
         PowerTimer = powerTimer;
+        UsageReminders = usageReminders;
         _module.StatusChanged += HandleStatusChanged;
 
         NavigationItems = ModuleNavigationItem.CreateDefaultNavigation();
@@ -58,6 +60,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public MicrophoneKeepAwakeViewModel Microphone { get; }
 
     public PowerTimerViewModel PowerTimer { get; }
+
+    public UsageReminderViewModel UsageReminders { get; }
 
     public IReadOnlyList<ModuleNavigationItem> NavigationItems { get; }
 
@@ -159,6 +163,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         RefreshRuntimeStatus();
         await Microphone.InitializeAsync(settings.MicrophoneKeepAwake);
         await PowerTimer.InitializeAsync(settings.PowerTimer);
+        await UsageReminders.InitializeAsync(settings.UsageReminders);
     }
 
     public async Task ShutdownAsync()
@@ -166,17 +171,24 @@ public sealed class MainViewModel : INotifyPropertyChanged
         _module.StatusChanged -= HandleStatusChanged;
         try
         {
-            await PowerTimer.ShutdownAsync();
+            await UsageReminders.ShutdownAsync();
         }
         finally
         {
             try
             {
-                await _module.DisposeAsync();
+                await PowerTimer.ShutdownAsync();
             }
             finally
             {
-                await Microphone.ShutdownAsync();
+                try
+                {
+                    await _module.DisposeAsync();
+                }
+                finally
+                {
+                    await Microphone.ShutdownAsync();
+                }
             }
         }
     }

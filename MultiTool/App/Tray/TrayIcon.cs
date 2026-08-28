@@ -8,6 +8,7 @@ internal sealed class TrayIcon : INotificationService, IDisposable
 {
     private readonly Action _openRequested;
     private readonly Forms.NotifyIcon _notifyIcon;
+    private string? _activationContext;
 
     public TrayIcon(Action openRequested, Func<Task> exitAsync)
     {
@@ -26,15 +27,19 @@ internal sealed class TrayIcon : INotificationService, IDisposable
             Visible = true
         };
         _notifyIcon.DoubleClick += (_, _) => _openRequested();
-        _notifyIcon.BalloonTipClicked += (_, _) => NotificationActivated?.Invoke(this, EventArgs.Empty);
+        _notifyIcon.BalloonTipClicked += (_, _) =>
+            Activated?.Invoke(this, new NotificationActivatedEventArgs(_activationContext));
     }
 
-    public event EventHandler? NotificationActivated;
+    public event EventHandler<NotificationActivatedEventArgs>? Activated;
 
-    public void Show(string title, string message)
+    public void Show(string title, string message) => Show(title, message, null);
+
+    public void Show(string title, string message, string? activationContext)
     {
         System.Windows.Application.Current.Dispatcher.BeginInvoke(() =>
         {
+            _activationContext = activationContext;
             _notifyIcon.ShowBalloonTip(
                 10_000,
                 title,

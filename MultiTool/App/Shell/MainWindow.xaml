@@ -4,6 +4,7 @@
         xmlns:audioViews="clr-namespace:MultiTool.Modules.AudioOutputKeepAlive.Views"
         xmlns:microphoneViews="clr-namespace:MultiTool.Modules.MicrophoneKeepAwake.Views"
         xmlns:powerViews="clr-namespace:MultiTool.Modules.PowerTimer.Views"
+        xmlns:reminderViews="clr-namespace:MultiTool.Modules.UsageReminders.Views"
         xmlns:viewModels="clr-namespace:MultiTool.Presentation.ViewModels"
         xmlns:views="clr-namespace:MultiTool.Presentation.Views"
         Title="MultiTool"
@@ -154,9 +155,7 @@
             </Style.Triggers>
           </Style>
         </Grid.Style>
-        <views:PlaceholderModulePage
-            Title="Usage reminders"
-            Description="Configure gentle wrap-up and sign-off reminders for designated times." />
+        <reminderViews:UsageRemindersPage DataContext="{Binding UsageReminders}" />
       </Grid>
 
       <Grid>

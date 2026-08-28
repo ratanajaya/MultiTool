@@ -8,6 +8,7 @@ using MultiTool.Core.Settings;
 using MultiTool.Modules.AudioOutputKeepAlive;
 using MultiTool.Modules.MicrophoneKeepAwake;
 using MultiTool.Modules.PowerTimer;
+using MultiTool.Modules.UsageReminders;
 using MultiTool.Platform.Windows;
 using MultiTool.Presentation.Dialogs;
 
@@ -28,7 +29,7 @@ public partial class App : System.Windows.Application
         {
             var settingsStore = new JsonSettingsStore();
             _trayIcon = new TrayIcon(ShowMainWindow, ExitAsync);
-            _trayIcon.NotificationActivated += HandleNotificationActivated;
+            _trayIcon.Activated += HandleNotificationActivated;
             var module = new AudioOutputKeepAliveService(
                 new NAudioOutputService(),
                 new SystemAsyncDelay());
@@ -51,11 +52,24 @@ public partial class App : System.Windows.Application
                 powerTimerModule,
                 new WindowsConfirmationService(),
                 clock);
+            var reminderPresenter = new WindowsReminderPresentationService(
+                new WindowsFullScreenDetector());
+            var usageReminderModule = new UsageReminderService(
+                new JsonUsageReminderSettingsStore(settingsStore),
+                reminderPresenter,
+                _trayIcon,
+                clock,
+                new SystemAsyncDelay(),
+                new WindowsSystemTimeEvents());
+            var usageReminderViewModel = new UsageReminderViewModel(
+                usageReminderModule,
+                new WindowsConfirmationService());
             _viewModel = new MainViewModel(
                 module,
                 settingsStore,
                 microphoneViewModel,
-                powerTimerViewModel);
+                powerTimerViewModel,
+                usageReminderViewModel);
             _mainWindow = new MainWindow(_viewModel);
             _mainWindow.Closing += HandleWindowClosing;
 
@@ -117,7 +131,9 @@ public partial class App : System.Windows.Application
         Shutdown();
     }
 
-    private void HandleNotificationActivated(object? sender, EventArgs eventArgs)
+    private void HandleNotificationActivated(
+        object? sender,
+        Core.Notifications.NotificationActivatedEventArgs eventArgs)
     {
         if (_mainWindow is null)
         {
@@ -126,7 +142,11 @@ public partial class App : System.Windows.Application
 
         _mainWindow.Dispatcher.BeginInvoke(() =>
         {
-            _viewModel?.NavigateTo(ModulePage.PowerTimer);
+            _viewModel?.NavigateTo(eventArgs.Context switch
+            {
+                "UsageReminders" => ModulePage.UsageReminders,
+                _ => ModulePage.PowerTimer
+            });
             ShowMainWindow();
         });
     }

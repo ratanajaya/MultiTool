@@ -1,0 +1,111 @@
+<Window x:Class="MultiTool.Modules.UsageReminders.Views.ReminderOverlayWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Width="420"
+        SizeToContent="Height"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        ShowActivated="False"
+        Topmost="True"
+        ResizeMode="NoResize">
+  <Window.Resources>
+    <Style TargetType="Button">
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="Margin" Value="8,0,0,0" />
+      <Setter Property="Padding" Value="14,7" />
+    </Style>
+  </Window.Resources>
+
+  <Border x:Name="Card"
+          Margin="8"
+          Padding="20"
+          Background="#FFFDF7"
+          BorderBrush="#F59E0B"
+          BorderThickness="1,1,1,4"
+          CornerRadius="12">
+    <Border.RenderTransform>
+      <TranslateTransform x:Name="SlideTransform" X="30" />
+    </Border.RenderTransform>
+    <Border.Effect>
+      <DropShadowEffect BlurRadius="22" ShadowDepth="5" Opacity="0.28" />
+    </Border.Effect>
+
+    <Grid>
+      <Grid x:Name="ExpandedContent">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <DockPanel Grid.Row="0">
+          <Border DockPanel.Dock="Left"
+                  Width="32" Height="32"
+                  Margin="0,0,12,0"
+                  Background="#FEF3C7"
+                  CornerRadius="16">
+            <TextBlock Text="◷"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       Foreground="#B45309"
+                       FontSize="18" />
+          </Border>
+          <TextBlock Text="{Binding DisplayTitle}"
+                     VerticalAlignment="Center"
+                     FontSize="17"
+                     FontWeight="SemiBold"
+                     Foreground="#111827"
+                     TextWrapping="Wrap" />
+        </DockPanel>
+
+        <TextBlock Grid.Row="1"
+                   Text="{Binding Message}"
+                   Margin="44,10,0,0"
+                   Foreground="#374151"
+                   FontSize="14"
+                   TextWrapping="Wrap" />
+
+        <TextBlock Grid.Row="2"
+                   Text="{Binding TimeText}"
+                   Margin="44,8,0,0"
+                   Foreground="#6B7280"
+                   FontSize="12" />
+
+        <StackPanel Grid.Row="3"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Margin="0,18,0,0">
+          <Button x:Name="SnoozeButton"
+                  Content="{Binding SnoozeLabel}"
+                  Click="HandleSnoozeClicked" />
+          <Button Content="Done"
+                  Click="HandleDoneClicked"
+                  Background="#2563EB"
+                  BorderBrush="#2563EB"
+                  Foreground="White" />
+        </StackPanel>
+      </Grid>
+
+      <DockPanel x:Name="CollapsedContent" Visibility="Collapsed">
+        <TextBlock DockPanel.Dock="Left"
+                   Text="◷"
+                   Margin="0,0,10,0"
+                   Foreground="#B45309"
+                   FontSize="18" />
+        <Button DockPanel.Dock="Right"
+                Content="Open"
+                Margin="12,0,0,0"
+                Padding="10,4"
+                Click="HandleExpandClicked" />
+        <TextBlock Text="{Binding CollapsedLabel}"
+                   VerticalAlignment="Center"
+                   FontWeight="SemiBold"
+                   Foreground="#111827"
+                   TextTrimming="CharacterEllipsis" />
+      </DockPanel>
+    </Grid>
+  </Border>
+</Window>
