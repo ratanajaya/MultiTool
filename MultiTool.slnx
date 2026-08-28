@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="MultiTool/MultiTool.csproj" />
+  <Project Path="MultiTool.Tests/MultiTool.Tests.csproj" />
+</Solution>

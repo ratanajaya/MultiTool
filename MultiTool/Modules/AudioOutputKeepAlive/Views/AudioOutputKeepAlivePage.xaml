@@ -1,0 +1,104 @@
+<UserControl x:Class="MultiTool.Modules.AudioOutputKeepAlive.Views.AudioOutputKeepAlivePage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel Margin="32">
+      <DockPanel Margin="0,0,0,22">
+        <StackPanel DockPanel.Dock="Left">
+          <TextBlock Text="Audio output keep-alive" FontSize="26" FontWeight="SemiBold" />
+          <TextBlock Text="Periodically sends a near-silent burst to an output device."
+                     Foreground="#4B5563" Margin="0,5,0,0" />
+        </StackPanel>
+        <Border DockPanel.Dock="Right"
+                Background="#E5E7EB"
+                CornerRadius="12"
+                Padding="12,5"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Top">
+          <TextBlock Text="{Binding Status}" FontWeight="SemiBold" />
+        </Border>
+      </DockPanel>
+
+      <Border Padding="24" Background="White" CornerRadius="10">
+        <StackPanel>
+          <CheckBox Content="Enable and start automatically with MultiTool"
+                    IsChecked="{Binding IsEnabled}"
+                    Margin="0,0,0,18" />
+
+          <TextBlock Text="Output device" FontWeight="SemiBold" />
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <ComboBox Grid.Column="0"
+                      ItemsSource="{Binding OutputDevices}"
+                      SelectedItem="{Binding SelectedDevice}"
+                      DisplayMemberPath="DisplayName" />
+            <Button Grid.Column="1"
+                    Content="Refresh"
+                    Command="{Binding RefreshDevicesCommand}"
+                    Margin="8,4,0,12" />
+          </Grid>
+
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="18" />
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="18" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0">
+              <TextBlock Text="Interval (seconds)" FontWeight="SemiBold" />
+              <TextBox Text="{Binding IntervalSeconds, UpdateSourceTrigger=PropertyChanged}" />
+            </StackPanel>
+            <StackPanel Grid.Column="2">
+              <TextBlock Text="Burst duration (ms)" FontWeight="SemiBold" />
+              <TextBox Text="{Binding BurstDurationMilliseconds, UpdateSourceTrigger=PropertyChanged}" />
+            </StackPanel>
+            <StackPanel Grid.Column="4">
+              <TextBlock Text="Amplitude" FontWeight="SemiBold" />
+              <TextBox Text="{Binding Amplitude, UpdateSourceTrigger=PropertyChanged}" />
+            </StackPanel>
+          </Grid>
+
+          <TextBlock Text="Defaults: every 60 seconds, 250 ms, amplitude 0.00008. Keep the amplitude low."
+                     Foreground="#6B7280"
+                     FontSize="12"
+                     Margin="0,0,0,18" />
+
+          <StackPanel Orientation="Horizontal">
+            <Button Content="Apply"
+                    Command="{Binding ApplyCommand}"
+                    Background="{StaticResource AccentBrush}"
+                    Foreground="White"
+                    BorderBrush="{StaticResource AccentBrush}" />
+            <Button Content="{Binding StartStopLabel}" Command="{Binding StartStopCommand}" />
+            <Button Content="Play test burst" Command="{Binding PlayTestCommand}" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+
+      <Border Margin="0,16,0,0" Padding="18" Background="White" CornerRadius="10">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+          <StackPanel Grid.Column="0" Margin="0,0,28,0">
+            <TextBlock Text="Last burst" FontWeight="SemiBold" />
+            <TextBlock Text="{Binding LastBurst}" Foreground="#4B5563" Margin="0,3,0,0" />
+          </StackPanel>
+          <StackPanel Grid.Column="1">
+            <TextBlock Text="Activity" FontWeight="SemiBold" />
+            <TextBlock Text="{Binding Message}"
+                       Foreground="#4B5563"
+                       Margin="0,3,0,0"
+                       TextWrapping="Wrap" />
+          </StackPanel>
+        </Grid>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>
