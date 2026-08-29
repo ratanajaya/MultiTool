@@ -18,9 +18,9 @@ namespace MultiTool.Modules.BatchFileOrganizer.Views;
 
 public partial class BatchFileOrganizerPage : UserControl
 {
-    private const string ReorderDataFormat = "MultiTool.BatchFileOrganizer.File";
+    private const string ReorderDataFormat = "MultiTool.BatchFileOrganizer.Files";
     private Point _dragStart;
-    private BatchFileItem? _draggedItem;
+    private BatchFileItem? _dragCandidate;
     private BatchFileItem? _dropTarget;
 
     public BatchFileOrganizerPage()
@@ -30,6 +30,13 @@ public partial class BatchFileOrganizerPage : UserControl
 
     private void HandleFolderDragOver(object sender, DragEventArgs eventArgs)
     {
+        if (DataContext is BatchFileOrganizerViewModel { IsRenameDialogOpen: true })
+        {
+            eventArgs.Effects = DragDropEffects.None;
+            eventArgs.Handled = true;
+            return;
+        }
+
         if (!eventArgs.Data.GetDataPresent(DataFormats.FileDrop))
         {
             return;
@@ -43,6 +50,13 @@ public partial class BatchFileOrganizerPage : UserControl
 
     private async void HandleFolderDrop(object sender, DragEventArgs eventArgs)
     {
+        if (DataContext is BatchFileOrganizerViewModel { IsRenameDialogOpen: true })
+        {
+            eventArgs.Effects = DragDropEffects.None;
+            eventArgs.Handled = true;
+            return;
+        }
+
         if (!eventArgs.Data.GetDataPresent(DataFormats.FileDrop))
         {
             return;
@@ -67,14 +81,23 @@ public partial class BatchFileOrganizerPage : UserControl
     private void HandleFileMouseDown(object sender, MouseButtonEventArgs eventArgs)
     {
         _dragStart = eventArgs.GetPosition(FileList);
-        _draggedItem = FindAncestor<ListBoxItem>((DependencyObject)eventArgs.OriginalSource)?.DataContext
-            as BatchFileItem;
+        var container = FindAncestor<ListBoxItem>((DependencyObject)eventArgs.OriginalSource);
+        _dragCandidate = container?.DataContext as BatchFileItem;
+
+        if (_dragCandidate is not null
+            && FileList.SelectedItems.Contains(_dragCandidate)
+            && FileList.SelectedItems.Count > 1
+            && Keyboard.Modifiers == ModifierKeys.None)
+        {
+            container?.Focus();
+            eventArgs.Handled = true;
+        }
     }
 
     private void HandleFileMouseMove(object sender, MouseEventArgs eventArgs)
     {
         if (eventArgs.LeftButton != MouseButtonState.Pressed
-            || DataContext is not BatchFileOrganizerViewModel { CanEdit: true })
+            || DataContext is not BatchFileOrganizerViewModel { CanEdit: true } viewModel)
         {
             return;
         }
@@ -86,22 +109,37 @@ public partial class BatchFileOrganizerPage : UserControl
             return;
         }
 
-        if (_draggedItem is not BatchFileItem item
+        if (_dragCandidate is not BatchFileItem item
             || FileList.ItemContainerGenerator.ContainerFromItem(item) is not ListBoxItem container)
         {
             return;
         }
 
-        var data = new DataObject(ReorderDataFormat, item);
+        var selectedItems = FileList.SelectedItems
+            .OfType<BatchFileItem>()
+            .ToHashSet();
+        if (!selectedItems.Contains(item))
+        {
+            selectedItems = [item];
+        }
+
+        var draggedItems = viewModel.Files
+            .Where(selectedItems.Contains)
+            .ToArray();
+        var data = new DataObject(ReorderDataFormat, draggedItems);
         DragDrop.DoDragDrop(container, data, DragDropEffects.Move);
-        _draggedItem = null;
+        _dragCandidate = null;
         ClearDropIndicator();
     }
 
     private void HandleFileDragOver(object sender, DragEventArgs eventArgs)
     {
-        if (!eventArgs.Data.GetDataPresent(ReorderDataFormat))
+        if (!eventArgs.Data.GetDataPresent(ReorderDataFormat)
+            || eventArgs.Data.GetData(ReorderDataFormat) is not BatchFileItem[] { Length: > 0 }
+            || DataContext is not BatchFileOrganizerViewModel { CanEdit: true })
         {
+            eventArgs.Effects = DragDropEffects.None;
+            eventArgs.Handled = true;
             return;
         }
 
@@ -114,7 +152,7 @@ public partial class BatchFileOrganizerPage : UserControl
             return;
         }
 
-        var position = eventArgs.GetPosition(container).Y < container.ActualHeight / 2
+        var position = eventArgs.GetPosition(container).X < container.ActualWidth / 2
             ? FileDropPosition.Before
             : FileDropPosition.After;
         SetDropIndicator(target, position);
@@ -125,7 +163,7 @@ public partial class BatchFileOrganizerPage : UserControl
     private void HandleFileDrop(object sender, DragEventArgs eventArgs)
     {
         if (!eventArgs.Data.GetDataPresent(ReorderDataFormat)
-            || eventArgs.Data.GetData(ReorderDataFormat) is not BatchFileItem source
+            || eventArgs.Data.GetData(ReorderDataFormat) is not BatchFileItem[] { Length: > 0 } sources
             || DataContext is not BatchFileOrganizerViewModel viewModel)
         {
             return;
@@ -142,7 +180,19 @@ public partial class BatchFileOrganizerPage : UserControl
         }
 
         ClearDropIndicator();
-        viewModel.MoveFile(source, insertionIndex);
+        var selectedFile = viewModel.SelectedFile;
+        viewModel.MoveFiles(sources, insertionIndex);
+        FileList.SelectedItems.Clear();
+        foreach (var source in viewModel.Files.Where(sources.Contains))
+        {
+            FileList.SelectedItems.Add(source);
+        }
+
+        if (selectedFile is not null && sources.Contains(selectedFile))
+        {
+            viewModel.SelectedFile = selectedFile;
+        }
+
         eventArgs.Effects = DragDropEffects.Move;
         eventArgs.Handled = true;
     }

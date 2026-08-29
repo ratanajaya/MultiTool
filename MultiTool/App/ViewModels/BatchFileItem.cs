@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.IO;
 using System.Runtime.CompilerServices;
+using System.Windows.Media;
 
 namespace MultiTool.Presentation.ViewModels;
 
@@ -11,6 +12,7 @@ public sealed class BatchFileItem : INotifyPropertyChanged
     private int _position;
     private string _proposedName = string.Empty;
     private FileDropPosition _dropPosition;
+    private ImageSource? _thumbnailSource;
 
     public BatchFileItem(string path)
     {
@@ -34,6 +36,17 @@ public sealed class BatchFileItem : INotifyPropertyChanged
 
     public string Extension => Path.GetExtension(CurrentPath);
 
+    public string ThumbnailLabel
+    {
+        get
+        {
+            var extension = Extension.TrimStart('.');
+            return string.IsNullOrWhiteSpace(extension)
+                ? "FILE"
+                : extension.ToUpperInvariant();
+        }
+    }
+
     public int Position
     {
         get => _position;
@@ -52,11 +65,18 @@ public sealed class BatchFileItem : INotifyPropertyChanged
         set => SetField(ref _dropPosition, value);
     }
 
+    public ImageSource? ThumbnailSource
+    {
+        get => _thumbnailSource;
+        set => SetField(ref _thumbnailSource, value);
+    }
+
     public void ApplyRename(string path)
     {
         CurrentPath = path;
         CurrentName = Path.GetFileName(path);
         OnPropertyChanged(nameof(Extension));
+        OnPropertyChanged(nameof(ThumbnailLabel));
     }
 
     private bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)

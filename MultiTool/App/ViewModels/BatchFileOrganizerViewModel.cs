@@ -21,6 +21,8 @@ public sealed class BatchFileOrganizerViewModel : INotifyPropertyChanged
     private readonly IImagePreviewLoader _previewLoader;
     private readonly AsyncRelayCommand _browseCommand;
     private readonly AsyncRelayCommand _reloadCommand;
+    private readonly AsyncRelayCommand _openRenameDialogCommand;
+    private readonly AsyncRelayCommand _closeRenameDialogCommand;
     private readonly AsyncRelayCommand _renameCommand;
     private string _folderPath = string.Empty;
     private BatchFileItem? _selectedFile;
@@ -33,8 +35,11 @@ public sealed class BatchFileOrganizerViewModel : INotifyPropertyChanged
     private ImageSource? _previewSource;
     private bool _isBusy;
     private bool _isPreviewLoading;
+    private bool _isRenameDialogOpen;
+    private string _renameOperationMessage = string.Empty;
     private BatchRenamePlan _currentPlan = new();
     private CancellationTokenSource? _previewCancellation;
+    private CancellationTokenSource? _thumbnailCancellation;
     private CancellationTokenSource? _renameCancellation;
     private Task<BatchRenameResult>? _activeRenameTask;
     private int _sessionGeneration;
@@ -49,8 +54,16 @@ public sealed class BatchFileOrganizerViewModel : INotifyPropertyChanged
         _renameService = renameService;
         _folderPicker = folderPicker;
         _previewLoader = previewLoader;
-        _browseCommand = new AsyncRelayCommand(BrowseAsync, () => !IsBusy);
-        _reloadCommand = new AsyncRelayCommand(ReloadAsync, () => HasFolder && !IsBusy);
+        _browseCommand = new AsyncRelayCommand(BrowseAsync, () => !IsBusy && !IsRenameDialogOpen);
+        _reloadCommand = new AsyncRelayCommand(
+            ReloadAsync,
+            () => HasFolder && !IsBusy && !IsRenameDialogOpen);
+        _openRenameDialogCommand = new AsyncRelayCommand(
+            OpenRenameDialogAsync,
+            () => CanOpenRenameDialog);
+        _closeRenameDialogCommand = new AsyncRelayCommand(
+            CloseRenameDialogAsync,
+            () => IsRenameDialogOpen && !IsBusy);
         _renameCommand = new AsyncRelayCommand(RenameAsync, () => CanRename);
     }
 
@@ -67,6 +80,7 @@ public sealed class BatchFileOrganizerViewModel : INotifyPropertyChanged
             {
                 OnPropertyChanged(nameof(HasFolder));
                 OnPropertyChanged(nameof(CanEdit));
+                OnPropertyChanged(nameof(CanOpenRenameDialog));
                 RaiseCommandStates();
             }
         }
@@ -165,6 +179,7 @@ public sealed class BatchFileOrganizerViewModel : INotifyPropertyChanged
             {
                 OnPropertyChanged(nameof(CanEdit));
                 OnPropertyChanged(nameof(CanRename));
+                OnPropertyChanged(nameof(CanOpenRenameDialog));
                 RaiseCommandStates();
             }
         }
@@ -176,12 +191,40 @@ public sealed class BatchFileOrganizerViewModel : INotifyPropertyChanged
         private set => SetField(ref _isPreviewLoading, value);
     }
 
-    public bool CanEdit => HasFolder && !IsBusy;
+    public bool IsRenameDialogOpen
+    {
+        get => _isRenameDialogOpen;
+        private set
+        {
+            if (SetField(ref _isRenameDialogOpen, value))
+            {
+                OnPropertyChanged(nameof(CanEdit));
+                OnPropertyChanged(nameof(CanRename));
+                OnPropertyChanged(nameof(CanOpenRenameDialog));
+                RaiseCommandStates();
+            }
+        }
+    }
+
+    public string RenameOperationMessage
+    {
+        get => _renameOperationMessage;
+        private set => SetField(ref _renameOperationMessage, value);
+    }
+
+    public bool CanEdit => HasFolder && !IsBusy && !IsRenameDialogOpen;
+
+    public bool CanOpenRenameDialog =>
+        HasFolder
+        && Files.Count > 0
+        && !IsBusy
+        && !IsRenameDialogOpen;
 
     public bool CanRename =>
         HasFolder
         && Files.Count > 0
         && !IsBusy
+        && IsRenameDialogOpen
         && _currentPlan.IsValid
         && _currentPlan.HasChanges
         && string.IsNullOrWhiteSpace(ValidationMessage);
@@ -189,6 +232,10 @@ public sealed class BatchFileOrganizerViewModel : INotifyPropertyChanged
     public ICommand BrowseCommand => _browseCommand;
 
     public ICommand ReloadCommand => _reloadCommand;
+
+    public ICommand OpenRenameDialogCommand => _openRenameDialogCommand;
+
+    public ICommand CloseRenameDialogCommand => _closeRenameDialogCommand;
 
     public ICommand RenameCommand => _renameCommand;
 
@@ -207,6 +254,8 @@ public sealed class BatchFileOrganizerViewModel : INotifyPropertyChanged
         }
 
         var fullPath = Path.GetFullPath(folderPath);
+        IsRenameDialogOpen = false;
+        RenameOperationMessage = string.Empty;
         var generation = ++_sessionGeneration;
         CancelPreview();
         Status = "Loading folder...";
@@ -221,7 +270,7 @@ public sealed class BatchFileOrganizerViewModel : INotifyPropertyChanged
             ReplaceFiles(fullPath, paths);
             Status = Files.Count == 0
                 ? "The selected folder contains no files."
-                : $"Loaded {Files.Count} file(s). Drag rows to set their order.";
+                : $"Loaded {Files.Count} file(s). Use Ctrl or Shift to select multiple files, then drag tiles to set their order.";
         }
         catch (Exception exception)
         {
@@ -233,34 +282,58 @@ public sealed class BatchFileOrganizerViewModel : INotifyPropertyChanged
         }
     }
 
-    public void MoveFile(BatchFileItem item, int insertionIndex)
+    public void MoveFile(BatchFileItem item, int insertionIndex) =>
+        MoveFiles([item], insertionIndex);
+
+    public void MoveFiles(IEnumerable<BatchFileItem> items, int insertionIndex)
     {
         if (!CanEdit)
         {
             return;
         }
 
-        var oldIndex = Files.IndexOf(item);
-        if (oldIndex < 0)
+        var orderedItems = items
+            .Distinct()
+            .Select(item => new { Item = item, Index = Files.IndexOf(item) })
+            .Where(entry => entry.Index >= 0)
+            .OrderBy(entry => entry.Index)
+            .ToArray();
+        if (orderedItems.Length == 0)
         {
             return;
         }
 
-        var targetIndex = Math.Clamp(insertionIndex, 0, Files.Count);
-        if (targetIndex > oldIndex)
-        {
-            targetIndex--;
-        }
-
-        if (targetIndex == oldIndex)
+        var boundedInsertionIndex = Math.Clamp(insertionIndex, 0, Files.Count);
+        var adjustedInsertionIndex = boundedInsertionIndex
+            - orderedItems.Count(entry => entry.Index < boundedInsertionIndex);
+        var movedItems = orderedItems.Select(entry => entry.Item).ToArray();
+        var movedItemSet = movedItems.ToHashSet();
+        var desiredOrder = Files.Where(item => !movedItemSet.Contains(item)).ToList();
+        adjustedInsertionIndex = Math.Clamp(adjustedInsertionIndex, 0, desiredOrder.Count);
+        desiredOrder.InsertRange(adjustedInsertionIndex, movedItems);
+        if (Files.SequenceEqual(desiredOrder))
         {
             return;
         }
 
-        Files.Move(oldIndex, targetIndex);
-        SelectedFile = item;
+        for (var index = 0; index < desiredOrder.Count; index++)
+        {
+            var currentIndex = Files.IndexOf(desiredOrder[index]);
+            if (currentIndex != index)
+            {
+                Files.Move(currentIndex, index);
+            }
+        }
+
+        if (SelectedFile is null || !movedItemSet.Contains(SelectedFile))
+        {
+            SelectedFile = movedItems[0];
+        }
+
         RecomputePlan();
-        Status = "Order updated. Review the proposed names before renaming.";
+        Status = movedItems.Length == 1
+            ? "Order updated. Files will be numbered in tile order."
+            : $"Moved {movedItems.Length} files. Files will be numbered in tile order.";
     }
 
     public void ReportFolderDropError(string message) => Status = message;
@@ -269,6 +342,7 @@ public sealed class BatchFileOrganizerViewModel : INotifyPropertyChanged
     {
         _sessionGeneration++;
         CancelPreview();
+        CancelThumbnailLoading();
         _renameCancellation?.Cancel();
         ClearFolderState();
         Status = "Drop a folder here or choose Browse.";
@@ -310,6 +384,21 @@ public sealed class BatchFileOrganizerViewModel : INotifyPropertyChanged
 
     private Task ReloadAsync() => LoadFolderAsync(FolderPath);
 
+    private Task OpenRenameDialogAsync()
+    {
+        RecomputePlan();
+        RenameOperationMessage = string.Empty;
+        IsRenameDialogOpen = true;
+        return Task.CompletedTask;
+    }
+
+    private Task CloseRenameDialogAsync()
+    {
+        IsRenameDialogOpen = false;
+        RenameOperationMessage = string.Empty;
+        return Task.CompletedTask;
+    }
+
     private async Task RenameAsync()
     {
         RecomputePlan();
@@ -326,6 +415,7 @@ public sealed class BatchFileOrganizerViewModel : INotifyPropertyChanged
         _renameCancellation = new CancellationTokenSource();
         IsBusy = true;
         Status = "Renaming files...";
+        RenameOperationMessage = "Renaming files...";
         try
         {
             var renameTask = _renameService.RenameAsync(
@@ -348,6 +438,8 @@ public sealed class BatchFileOrganizerViewModel : INotifyPropertyChanged
 
                 RecomputePlan();
                 Status = result.Message;
+                RenameOperationMessage = string.Empty;
+                IsRenameDialogOpen = false;
                 StartPreview(SelectedFile);
             }
             else
@@ -380,6 +472,7 @@ public sealed class BatchFileOrganizerViewModel : INotifyPropertyChanged
             {
                 ReplaceFiles(folderPath, paths);
                 Status = message;
+                RenameOperationMessage = message;
             }
         }
         catch (Exception reloadException)
@@ -395,6 +488,7 @@ public sealed class BatchFileOrganizerViewModel : INotifyPropertyChanged
     private void ReplaceFiles(string folderPath, IEnumerable<string> paths)
     {
         CancelPreview();
+        CancelThumbnailLoading();
         SelectedFile = null;
         Files.Clear();
         foreach (var path in paths
@@ -407,12 +501,14 @@ public sealed class BatchFileOrganizerViewModel : INotifyPropertyChanged
         FolderPath = folderPath;
         OnPropertyChanged(nameof(FileCountText));
         RecomputePlan();
+        StartThumbnailLoading(Files.ToArray());
         SelectedFile = Files.FirstOrDefault();
     }
 
     private void ClearFolderState()
     {
         CancelPreview();
+        CancelThumbnailLoading();
         _selectedFile = null;
         OnPropertyChanged(nameof(SelectedFile));
         Files.Clear();
@@ -420,6 +516,8 @@ public sealed class BatchFileOrganizerViewModel : INotifyPropertyChanged
         PreviewSource = null;
         PreviewMessage = "Select an image to preview it.";
         ValidationMessage = string.Empty;
+        IsRenameDialogOpen = false;
+        RenameOperationMessage = string.Empty;
         _currentPlan = new BatchRenamePlan();
         OnPropertyChanged(nameof(FileCountText));
         OnPropertyChanged(nameof(CanRename));
@@ -493,7 +591,9 @@ public sealed class BatchFileOrganizerViewModel : INotifyPropertyChanged
         PreviewMessage = "Loading preview...";
         try
         {
-            var source = await _previewLoader.LoadAsync(file.CurrentPath, cancellation.Token);
+            var source = await _previewLoader.LoadAsync(
+                file.CurrentPath,
+                cancellationToken: cancellation.Token);
             if (!cancellation.IsCancellationRequested
                 && generation == _sessionGeneration
                 && ReferenceEquals(file, SelectedFile))
@@ -534,10 +634,80 @@ public sealed class BatchFileOrganizerViewModel : INotifyPropertyChanged
         IsPreviewLoading = false;
     }
 
+    private void StartThumbnailLoading(IReadOnlyList<BatchFileItem> files)
+    {
+        CancelThumbnailLoading();
+        var imageFiles = files
+            .Where(file => SupportedImageExtensions.Contains(file.Extension))
+            .ToArray();
+        if (imageFiles.Length == 0)
+        {
+            return;
+        }
+
+        var cancellation = new CancellationTokenSource();
+        _thumbnailCancellation = cancellation;
+        var generation = _sessionGeneration;
+        _ = LoadThumbnailsAsync(imageFiles, generation, cancellation);
+    }
+
+    private async Task LoadThumbnailsAsync(
+        IReadOnlyList<BatchFileItem> files,
+        int generation,
+        CancellationTokenSource cancellation)
+    {
+        try
+        {
+            foreach (var file in files)
+            {
+                cancellation.Token.ThrowIfCancellationRequested();
+                try
+                {
+                    var thumbnail = await _previewLoader.LoadAsync(
+                        file.CurrentPath,
+                        maximumPixelDimension: 192,
+                        cancellationToken: cancellation.Token);
+                    if (generation == _sessionGeneration && Files.Contains(file))
+                    {
+                        file.ThumbnailSource = thumbnail;
+                    }
+                }
+                catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch
+                {
+                    // Keep the file-type tile when a thumbnail cannot be decoded.
+                }
+            }
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
+        }
+        finally
+        {
+            if (ReferenceEquals(_thumbnailCancellation, cancellation))
+            {
+                _thumbnailCancellation = null;
+            }
+
+            cancellation.Dispose();
+        }
+    }
+
+    private void CancelThumbnailLoading()
+    {
+        _thumbnailCancellation?.Cancel();
+        _thumbnailCancellation = null;
+    }
+
     private void RaiseCommandStates()
     {
         _browseCommand.RaiseCanExecuteChanged();
         _reloadCommand.RaiseCanExecuteChanged();
+        _openRenameDialogCommand.RaiseCanExecuteChanged();
+        _closeRenameDialogCommand.RaiseCanExecuteChanged();
         _renameCommand.RaiseCanExecuteChanged();
     }
 

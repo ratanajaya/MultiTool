@@ -5,8 +5,9 @@ completed modules can periodically play a near-silent output burst, hold a
 microphone capture stream open to prevent device power saving, schedule one
 shutdown, sleep, or hibernate action, show configurable usage reminders, and
 create compressed whole-deployment MongoDB backups with `mongodump`. It also
-includes a batch file organizer for drag-ordering a folder's files, previewing
-common image formats, and applying safe Prefix+Number renames.
+includes a batch file organizer with a multi-select, drag-reorderable thumbnail
+grid, contained image previews, and safe Prefix+Number renames configured in a
+modal.
 
 ## Requirements
 

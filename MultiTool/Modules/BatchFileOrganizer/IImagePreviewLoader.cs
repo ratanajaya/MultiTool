@@ -4,5 +4,8 @@ namespace MultiTool.Modules.BatchFileOrganizer;
 
 public interface IImagePreviewLoader
 {
-    Task<ImageSource> LoadAsync(string filePath, CancellationToken cancellationToken = default);
+    Task<ImageSource> LoadAsync(
+        string filePath,
+        int? maximumPixelDimension = null,
+        CancellationToken cancellationToken = default);
 }

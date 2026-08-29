@@ -27,6 +27,12 @@ public sealed class SkiaImagePreviewLoaderTests
             Assert.AreEqual(2, bitmapSource.PixelWidth);
             Assert.AreEqual(3, bitmapSource.PixelHeight);
             Assert.IsTrue(bitmapSource.IsFrozen);
+
+            var thumbnail = (BitmapSource)await new SkiaImagePreviewLoader().LoadAsync(
+                path,
+                maximumPixelDimension: 2);
+            Assert.AreEqual(1, thumbnail.PixelWidth);
+            Assert.AreEqual(2, thumbnail.PixelHeight);
             File.Delete(path);
             Assert.IsFalse(File.Exists(path));
         }

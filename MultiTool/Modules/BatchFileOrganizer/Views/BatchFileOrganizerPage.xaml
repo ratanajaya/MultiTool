@@ -5,119 +5,362 @@
              AllowDrop="True"
              PreviewDragOver="HandleFolderDragOver"
              PreviewDrop="HandleFolderDrop">
-  <Grid Margin="28">
+  <UserControl.InputBindings>
+    <KeyBinding Key="Escape" Command="{Binding CloseRenameDialogCommand}" />
+  </UserControl.InputBindings>
+
+  <Grid Margin="14">
     <Grid.RowDefinitions>
-      <RowDefinition Height="Auto" />
       <RowDefinition Height="*" />
       <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
 
-    <DockPanel Grid.Row="0" Margin="0,0,0,18">
-      <StackPanel DockPanel.Dock="Left">
-        <TextBlock Text="Batch file organizer" FontSize="26" FontWeight="SemiBold" />
-        <TextBlock Text="Arrange files visually, then rename them in that exact order."
-                   Foreground="#4B5563"
-                   Margin="0,5,0,0" />
-      </StackPanel>
-      <Button DockPanel.Dock="Right"
-              Content="Browse folder"
-              Command="{Binding BrowseCommand}"
-              HorizontalAlignment="Right"
-              VerticalAlignment="Top" />
-    </DockPanel>
-
-    <Border Grid.Row="1"
-            Background="White"
-            BorderBrush="#CBD5E1"
-            BorderThickness="2"
-            CornerRadius="12"
-            Padding="34">
-      <Border.Style>
-        <Style TargetType="Border">
-          <Setter Property="Visibility" Value="Visible" />
+    <Grid Grid.Row="0">
+      <Grid.Style>
+        <Style TargetType="Grid">
+          <Setter Property="IsEnabled" Value="True" />
           <Style.Triggers>
-            <DataTrigger Binding="{Binding HasFolder}" Value="True">
-              <Setter Property="Visibility" Value="Collapsed" />
+            <DataTrigger Binding="{Binding IsRenameDialogOpen}" Value="True">
+              <Setter Property="IsEnabled" Value="False" />
             </DataTrigger>
           </Style.Triggers>
         </Style>
-      </Border.Style>
-      <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="520">
-        <TextBlock Text="Drop one folder here"
-                   FontSize="24"
-                   FontWeight="SemiBold"
-                   HorizontalAlignment="Center" />
-        <TextBlock Text="Only files directly inside the folder will be loaded. Subfolders are left untouched."
-                   Foreground="#64748B"
-                   Margin="0,8,0,18"
-                   TextAlignment="Center"
-                   TextWrapping="Wrap" />
-        <Button Content="Browse folder"
-                Command="{Binding BrowseCommand}"
-                HorizontalAlignment="Center"
-                Background="{StaticResource AccentBrush}"
-                BorderBrush="{StaticResource AccentBrush}"
-                Foreground="White" />
-      </StackPanel>
-    </Border>
+      </Grid.Style>
 
-    <Grid Grid.Row="1">
+      <Border Background="White"
+              BorderBrush="#CBD5E1"
+              BorderThickness="2"
+              CornerRadius="12"
+              Padding="28">
+        <Border.Style>
+          <Style TargetType="Border">
+            <Setter Property="Visibility" Value="Visible" />
+            <Style.Triggers>
+              <DataTrigger Binding="{Binding HasFolder}" Value="True">
+                <Setter Property="Visibility" Value="Collapsed" />
+              </DataTrigger>
+            </Style.Triggers>
+          </Style>
+        </Border.Style>
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="520">
+          <TextBlock Text="Drop one folder here"
+                     FontSize="22"
+                     FontWeight="SemiBold"
+                     HorizontalAlignment="Center" />
+          <TextBlock Text="Files directly inside the folder will be loaded. Subfolders are left untouched."
+                     Foreground="#64748B"
+                     Margin="0,7,0,14"
+                     TextAlignment="Center"
+                     TextWrapping="Wrap" />
+          <Button Content="Browse…"
+                  Command="{Binding BrowseCommand}"
+                  HorizontalAlignment="Center"
+                  MinWidth="0"
+                  Padding="10,4"
+                  Margin="0"
+                  Background="{StaticResource AccentBrush}"
+                  BorderBrush="{StaticResource AccentBrush}"
+                  Foreground="White" />
+        </StackPanel>
+      </Border>
+
+      <Grid>
+        <Grid.Style>
+          <Style TargetType="Grid">
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Style.Triggers>
+              <DataTrigger Binding="{Binding HasFolder}" Value="True">
+                <Setter Property="Visibility" Value="Visible" />
+              </DataTrigger>
+            </Style.Triggers>
+          </Style>
+        </Grid.Style>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="2*" MinWidth="460" />
+          <ColumnDefinition Width="8" />
+          <ColumnDefinition Width="*" MinWidth="280" />
+        </Grid.ColumnDefinitions>
+
+        <GridSplitter Grid.Column="1"
+                      Width="8"
+                      HorizontalAlignment="Stretch"
+                      VerticalAlignment="Stretch"
+                      ResizeDirection="Columns"
+                      ResizeBehavior="PreviousAndNext"
+                      Background="#CBD5E1"
+                      ShowsPreview="True"
+                      Cursor="SizeWE" />
+
+        <Border Grid.Column="0" Padding="14" Background="White" CornerRadius="10">
+          <Grid>
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <Grid Grid.Row="0" Margin="0,0,0,10">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+              </Grid.ColumnDefinitions>
+              <StackPanel Grid.Column="0" MinWidth="80">
+                <TextBlock Text="Files" FontSize="17" FontWeight="SemiBold" />
+                <TextBlock Text="{Binding FolderPath}"
+                           Foreground="#64748B"
+                           TextTrimming="CharacterEllipsis"
+                           ToolTip="{Binding FolderPath}" />
+              </StackPanel>
+              <TextBlock Grid.Column="1"
+                         Text="{Binding FileCountText}"
+                         Foreground="#475569"
+                         VerticalAlignment="Center"
+                         Margin="10,0" />
+              <Button Grid.Column="2"
+                      Content="Browse…"
+                      Command="{Binding BrowseCommand}"
+                      MinWidth="0"
+                      Padding="9,4"
+                      Margin="0,0,6,0" />
+              <Button Grid.Column="3"
+                      Content="Reload"
+                      Command="{Binding ReloadCommand}"
+                      MinWidth="0"
+                      Padding="9,4"
+                      Margin="0,0,6,0" />
+              <Button Grid.Column="4"
+                      Content="Rename…"
+                      Command="{Binding OpenRenameDialogCommand}"
+                      MinWidth="0"
+                      Padding="10,4"
+                      Margin="0"
+                      Background="{StaticResource AccentBrush}"
+                      BorderBrush="{StaticResource AccentBrush}"
+                      Foreground="White" />
+            </Grid>
+
+            <ListBox x:Name="FileList"
+                     Grid.Row="1"
+                     ItemsSource="{Binding Files}"
+                     SelectedItem="{Binding SelectedFile}"
+                     SelectionMode="Extended"
+                     IsEnabled="{Binding CanEdit}"
+                     BorderBrush="#CBD5E1"
+                     BorderThickness="1"
+                     Padding="4"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     ScrollViewer.VerticalScrollBarVisibility="Auto"
+                     PreviewMouseLeftButtonDown="HandleFileMouseDown"
+                     PreviewMouseMove="HandleFileMouseMove"
+                     DragOver="HandleFileDragOver"
+                     DragLeave="HandleFileDragLeave"
+                     Drop="HandleFileDrop">
+              <ListBox.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <WrapPanel Orientation="Horizontal"
+                             ItemWidth="142"
+                             ItemHeight="170" />
+                </ItemsPanelTemplate>
+              </ListBox.ItemsPanel>
+              <ListBox.ItemContainerStyle>
+                <Style TargetType="ListBoxItem">
+                  <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                  <Setter Property="VerticalContentAlignment" Value="Stretch" />
+                  <Setter Property="Padding" Value="0" />
+                  <Setter Property="Margin" Value="2" />
+                  <Setter Property="BorderThickness" Value="0" />
+                  <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                </Style>
+              </ListBox.ItemContainerStyle>
+              <ListBox.ItemTemplate>
+                <DataTemplate>
+                  <Border x:Name="TileBorder"
+                          Padding="7,6"
+                          BorderBrush="#2563EB"
+                          BorderThickness="0"
+                          Background="Transparent">
+                    <Grid>
+                      <Grid.RowDefinitions>
+                        <RowDefinition Height="124" />
+                        <RowDefinition Height="*" />
+                      </Grid.RowDefinitions>
+
+                      <Border Grid.Row="0"
+                              Width="120"
+                              Height="120"
+                              HorizontalAlignment="Center"
+                              Background="#E2E8F0"
+                              BorderBrush="#CBD5E1"
+                              BorderThickness="1"
+                              CornerRadius="5"
+                              ClipToBounds="True">
+                        <Grid>
+                          <TextBlock Text="{Binding ThumbnailLabel}"
+                                     Foreground="#64748B"
+                                     FontSize="11"
+                                     FontWeight="SemiBold"
+                                     HorizontalAlignment="Center"
+                                     VerticalAlignment="Center" />
+                          <Image Source="{Binding ThumbnailSource}"
+                                 Stretch="Uniform"
+                                 HorizontalAlignment="Stretch"
+                                 VerticalAlignment="Stretch" />
+                          <Border HorizontalAlignment="Left"
+                                  VerticalAlignment="Top"
+                                  Margin="5"
+                                  Padding="5,2"
+                                  Background="#D9111827"
+                                  CornerRadius="8">
+                            <TextBlock Text="{Binding Position}"
+                                       Foreground="White"
+                                       FontSize="10"
+                                       FontWeight="SemiBold" />
+                          </Border>
+                        </Grid>
+                      </Border>
+
+                      <TextBlock Grid.Row="1"
+                                 Text="{Binding CurrentName}"
+                                 ToolTip="{Binding CurrentName}"
+                                 Margin="1,5,1,0"
+                                 FontSize="11"
+                                 FontWeight="SemiBold"
+                                 TextAlignment="Center"
+                                 TextWrapping="Wrap"
+                                 LineHeight="15"
+                                 MaxHeight="31" />
+                    </Grid>
+                  </Border>
+                  <DataTemplate.Triggers>
+                    <DataTrigger Binding="{Binding DropPosition}"
+                                 Value="{x:Static viewModels:FileDropPosition.Before}">
+                      <Setter TargetName="TileBorder" Property="BorderThickness" Value="3,0,0,0" />
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding DropPosition}"
+                                 Value="{x:Static viewModels:FileDropPosition.After}">
+                      <Setter TargetName="TileBorder" Property="BorderThickness" Value="0,0,3,0" />
+                    </DataTrigger>
+                  </DataTemplate.Triggers>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </Grid>
+        </Border>
+
+        <Border Grid.Column="2" Padding="14" Background="#111827" CornerRadius="10">
+          <Grid>
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <TextBlock Grid.Row="0"
+                       Text="{Binding SelectedFile.CurrentName, TargetNullValue=Preview}"
+                       Foreground="White"
+                       FontSize="17"
+                       FontWeight="SemiBold"
+                       TextTrimming="CharacterEllipsis"
+                       Margin="0,0,0,10" />
+            <Grid Grid.Row="1" Background="#0B1220">
+              <Image Source="{Binding PreviewSource}"
+                     Stretch="Uniform"
+                     HorizontalAlignment="Stretch"
+                     VerticalAlignment="Stretch" />
+              <TextBlock Text="{Binding PreviewMessage}"
+                         Foreground="#CBD5E1"
+                         TextAlignment="Center"
+                         TextWrapping="Wrap"
+                         HorizontalAlignment="Center"
+                         VerticalAlignment="Center"
+                         MaxWidth="320"
+                         Margin="20">
+                <TextBlock.Style>
+                  <Style TargetType="TextBlock">
+                    <Setter Property="Visibility" Value="Visible" />
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding HasPreview}" Value="True">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </TextBlock.Style>
+              </TextBlock>
+              <ProgressBar IsIndeterminate="True"
+                           Height="4"
+                           VerticalAlignment="Top">
+                <ProgressBar.Style>
+                  <Style TargetType="ProgressBar">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding IsPreviewLoading}" Value="True">
+                        <Setter Property="Visibility" Value="Visible" />
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </ProgressBar.Style>
+              </ProgressBar>
+            </Grid>
+          </Grid>
+        </Border>
+      </Grid>
+    </Grid>
+
+    <TextBlock Grid.Row="1"
+               Text="{Binding Status}"
+               Foreground="#475569"
+               TextWrapping="Wrap"
+               Margin="2,8,2,0" />
+
+    <Grid Grid.RowSpan="2"
+          Panel.ZIndex="20"
+          Background="#990F172A">
       <Grid.Style>
         <Style TargetType="Grid">
           <Setter Property="Visibility" Value="Collapsed" />
           <Style.Triggers>
-            <DataTrigger Binding="{Binding HasFolder}" Value="True">
+            <DataTrigger Binding="{Binding IsRenameDialogOpen}" Value="True">
               <Setter Property="Visibility" Value="Visible" />
             </DataTrigger>
           </Style.Triggers>
         </Style>
       </Grid.Style>
-      <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="5*" MinWidth="390" />
-        <ColumnDefinition Width="16" />
-        <ColumnDefinition Width="6*" MinWidth="360" />
-      </Grid.ColumnDefinitions>
 
-      <Border Grid.Column="0" Padding="18" Background="White" CornerRadius="10">
-        <Grid>
-          <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
-          </Grid.RowDefinitions>
+      <Border Width="440"
+              Padding="24"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Center"
+              Background="White"
+              BorderBrush="#CBD5E1"
+              BorderThickness="1"
+              CornerRadius="12">
+        <StackPanel>
+          <TextBlock Text="Rename files"
+                     FontSize="22"
+                     FontWeight="SemiBold" />
+          <TextBlock Text="{Binding FileCountText}"
+                     Foreground="#475569"
+                     Margin="0,4,0,0" />
+          <TextBlock Text="Files will be numbered in tile order. Extensions are preserved."
+                     Foreground="#64748B"
+                     TextWrapping="Wrap"
+                     Margin="0,3,0,18" />
 
-          <Grid Grid.Row="0" Margin="0,0,0,14">
+          <Grid>
+            <Grid.Style>
+              <Style TargetType="Grid">
+                <Setter Property="IsEnabled" Value="True" />
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding IsBusy}" Value="True">
+                    <Setter Property="IsEnabled" Value="False" />
+                  </DataTrigger>
+                </Style.Triggers>
+              </Style>
+            </Grid.Style>
             <Grid.ColumnDefinitions>
               <ColumnDefinition Width="*" />
-              <ColumnDefinition Width="Auto" />
-              <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
-            <StackPanel Grid.Column="0">
-              <TextBlock Text="Files" FontSize="18" FontWeight="SemiBold" />
-              <TextBlock Text="{Binding FolderPath}"
-                         Foreground="#64748B"
-                         TextTrimming="CharacterEllipsis"
-                         ToolTip="{Binding FolderPath}" />
-            </StackPanel>
-            <TextBlock Grid.Column="1"
-                       Text="{Binding FileCountText}"
-                       Foreground="#475569"
-                       VerticalAlignment="Center"
-                       Margin="12,0" />
-            <Button Grid.Column="2"
-                    Content="Reload"
-                    Command="{Binding ReloadCommand}"
-                    MinWidth="72"
-                    Margin="0" />
-          </Grid>
-
-          <Grid Grid.Row="1" Margin="0,0,0,8" IsEnabled="{Binding CanEdit}">
-            <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="*" />
-              <ColumnDefinition Width="96" />
-              <ColumnDefinition Width="76" />
+              <ColumnDefinition Width="92" />
+              <ColumnDefinition Width="74" />
             </Grid.ColumnDefinitions>
             <StackPanel Grid.Column="0" Margin="0,0,10,0">
               <TextBlock Text="Prefix" FontWeight="SemiBold" />
@@ -136,164 +379,50 @@
             </StackPanel>
           </Grid>
 
-          <TextBlock Grid.Row="2"
-                     Text="{Binding ValidationMessage}"
+          <TextBlock Text="{Binding ValidationMessage}"
                      Foreground="#B91C1C"
                      FontSize="12"
                      TextWrapping="Wrap"
                      MinHeight="18"
-                     Margin="0,0,0,5" />
-
-          <ListBox x:Name="FileList"
-                   Grid.Row="3"
-                   ItemsSource="{Binding Files}"
-                   SelectedItem="{Binding SelectedFile}"
-                   IsEnabled="{Binding CanEdit}"
-                   BorderBrush="#CBD5E1"
-                   BorderThickness="1"
-                   ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                   PreviewMouseLeftButtonDown="HandleFileMouseDown"
-                   PreviewMouseMove="HandleFileMouseMove"
-                   DragOver="HandleFileDragOver"
-                   DragLeave="HandleFileDragLeave"
-                   Drop="HandleFileDrop">
-            <ListBox.ItemContainerStyle>
-              <Style TargetType="ListBoxItem">
-                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                <Setter Property="Padding" Value="0" />
-                <Setter Property="BorderThickness" Value="0" />
+                     Margin="0,10,0,0" />
+          <TextBlock Text="{Binding RenameOperationMessage}"
+                     Foreground="#475569"
+                     FontSize="12"
+                     TextWrapping="Wrap"
+                     MinHeight="18"
+                     Margin="0,4,0,0" />
+          <ProgressBar IsIndeterminate="True"
+                       Height="4"
+                       Margin="0,8,0,0">
+            <ProgressBar.Style>
+              <Style TargetType="ProgressBar">
+                <Setter Property="Visibility" Value="Collapsed" />
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding IsBusy}" Value="True">
+                    <Setter Property="Visibility" Value="Visible" />
+                  </DataTrigger>
+                </Style.Triggers>
               </Style>
-            </ListBox.ItemContainerStyle>
-            <ListBox.ItemTemplate>
-              <DataTemplate>
-                <Border x:Name="RowBorder"
-                        Padding="8,7"
-                        BorderBrush="#2563EB"
-                        BorderThickness="0"
-                        Background="Transparent">
-                  <Grid>
-                    <Grid.ColumnDefinitions>
-                      <ColumnDefinition Width="34" />
-                      <ColumnDefinition Width="*" />
-                      <ColumnDefinition Width="18" />
-                      <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0"
-                               Text="{Binding Position}"
-                               Foreground="#64748B"
-                               VerticalAlignment="Center" />
-                    <TextBlock Grid.Column="1"
-                               Text="{Binding CurrentName}"
-                               ToolTip="{Binding CurrentName}"
-                               TextTrimming="CharacterEllipsis"
-                               VerticalAlignment="Center" />
-                    <TextBlock Grid.Column="2"
-                               Text="→"
-                               Foreground="#94A3B8"
-                               HorizontalAlignment="Center"
-                               VerticalAlignment="Center" />
-                    <TextBlock Grid.Column="3"
-                               Text="{Binding ProposedName}"
-                               ToolTip="{Binding ProposedName}"
-                               Foreground="#1D4ED8"
-                               TextTrimming="CharacterEllipsis"
-                               VerticalAlignment="Center" />
-                  </Grid>
-                </Border>
-                <DataTemplate.Triggers>
-                  <DataTrigger Binding="{Binding DropPosition}"
-                               Value="{x:Static viewModels:FileDropPosition.Before}">
-                    <Setter TargetName="RowBorder" Property="BorderThickness" Value="0,3,0,0" />
-                  </DataTrigger>
-                  <DataTrigger Binding="{Binding DropPosition}"
-                               Value="{x:Static viewModels:FileDropPosition.After}">
-                    <Setter TargetName="RowBorder" Property="BorderThickness" Value="0,0,0,3" />
-                  </DataTrigger>
-                </DataTemplate.Triggers>
-              </DataTemplate>
-            </ListBox.ItemTemplate>
-          </ListBox>
+            </ProgressBar.Style>
+          </ProgressBar>
 
-          <Grid Grid.Row="4" Margin="0,14,0,0">
-            <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="*" />
-              <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
-            <TextBlock Grid.Column="0"
-                       Text="Drag rows to change numbering order."
-                       Foreground="#64748B"
-                       VerticalAlignment="Center" />
-            <Button Grid.Column="1"
-                    Content="Rename files"
+          <StackPanel Orientation="Horizontal"
+                      HorizontalAlignment="Right"
+                      Margin="0,18,0,0">
+            <Button Content="Cancel"
+                    Command="{Binding CloseRenameDialogCommand}"
+                    MinWidth="0"
+                    Margin="0,0,8,0" />
+            <Button Content="Rename"
                     Command="{Binding RenameCommand}"
-                    Margin="8,0,0,0"
+                    MinWidth="0"
+                    Margin="0"
                     Background="{StaticResource AccentBrush}"
                     BorderBrush="{StaticResource AccentBrush}"
                     Foreground="White" />
-          </Grid>
-        </Grid>
-      </Border>
-
-      <Border Grid.Column="2" Padding="18" Background="#111827" CornerRadius="10">
-        <Grid>
-          <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-          </Grid.RowDefinitions>
-          <TextBlock Grid.Row="0"
-                     Text="{Binding SelectedFile.CurrentName, TargetNullValue=Preview}"
-                     Foreground="White"
-                     FontSize="18"
-                     FontWeight="SemiBold"
-                     TextTrimming="CharacterEllipsis"
-                     Margin="0,0,0,12" />
-          <Grid Grid.Row="1" Background="#0B1220">
-            <Image Source="{Binding PreviewSource}"
-                   Stretch="Uniform"
-                   HorizontalAlignment="Stretch"
-                   VerticalAlignment="Stretch" />
-            <TextBlock Text="{Binding PreviewMessage}"
-                       Foreground="#CBD5E1"
-                       TextAlignment="Center"
-                       TextWrapping="Wrap"
-                       HorizontalAlignment="Center"
-                       VerticalAlignment="Center"
-                       MaxWidth="360"
-                       Margin="24">
-              <TextBlock.Style>
-                <Style TargetType="TextBlock">
-                  <Setter Property="Visibility" Value="Visible" />
-                  <Style.Triggers>
-                    <DataTrigger Binding="{Binding HasPreview}" Value="True">
-                      <Setter Property="Visibility" Value="Collapsed" />
-                    </DataTrigger>
-                  </Style.Triggers>
-                </Style>
-              </TextBlock.Style>
-            </TextBlock>
-            <ProgressBar IsIndeterminate="True"
-                         Height="4"
-                         VerticalAlignment="Top">
-              <ProgressBar.Style>
-                <Style TargetType="ProgressBar">
-                  <Setter Property="Visibility" Value="Collapsed" />
-                  <Style.Triggers>
-                    <DataTrigger Binding="{Binding IsPreviewLoading}" Value="True">
-                      <Setter Property="Visibility" Value="Visible" />
-                    </DataTrigger>
-                  </Style.Triggers>
-                </Style>
-              </ProgressBar.Style>
-            </ProgressBar>
-          </Grid>
-        </Grid>
+          </StackPanel>
+        </StackPanel>
       </Border>
     </Grid>
-
-    <TextBlock Grid.Row="2"
-               Text="{Binding Status}"
-               Foreground="#475569"
-               TextWrapping="Wrap"
-               Margin="2,12,2,0" />
   </Grid>
 </UserControl>

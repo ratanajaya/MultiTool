@@ -11,15 +11,40 @@ public sealed class SkiaImagePreviewLoader : IImagePreviewLoader
 {
     public async Task<ImageSource> LoadAsync(
         string filePath,
+        int? maximumPixelDimension = null,
         CancellationToken cancellationToken = default)
     {
-        var encodedBytes = await File.ReadAllBytesAsync(filePath, cancellationToken);
+        var encodedBytes = await ReadAllBytesWithoutLockingAsync(filePath, cancellationToken);
         return await Task.Run(
-            () => Decode(encodedBytes, cancellationToken),
+            () => Decode(encodedBytes, maximumPixelDimension, cancellationToken),
             cancellationToken);
     }
 
-    private static BitmapSource Decode(byte[] encodedBytes, CancellationToken cancellationToken)
+    private static async Task<byte[]> ReadAllBytesWithoutLockingAsync(
+        string filePath,
+        CancellationToken cancellationToken)
+    {
+        await using var stream = new FileStream(
+            filePath,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.ReadWrite | FileShare.Delete,
+            bufferSize: 64 * 1024,
+            FileOptions.Asynchronous | FileOptions.SequentialScan);
+        if (stream.Length > int.MaxValue)
+        {
+            throw new InvalidDataException("The selected image is too large to preview.");
+        }
+
+        var bytes = new byte[(int)stream.Length];
+        await stream.ReadExactlyAsync(bytes, cancellationToken);
+        return bytes;
+    }
+
+    private static BitmapSource Decode(
+        byte[] encodedBytes,
+        int? maximumPixelDimension,
+        CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         using var decoded = SKBitmap.Decode(encodedBytes)
@@ -29,9 +54,14 @@ public sealed class SkiaImagePreviewLoader : IImagePreviewLoader
             throw new InvalidDataException("The selected image has invalid dimensions.");
         }
 
+        var scale = maximumPixelDimension is > 0
+            ? Math.Min(1d, (double)maximumPixelDimension.Value / Math.Max(decoded.Width, decoded.Height))
+            : 1d;
+        var outputWidth = Math.Max(1, (int)Math.Round(decoded.Width * scale));
+        var outputHeight = Math.Max(1, (int)Math.Round(decoded.Height * scale));
         var imageInfo = new SKImageInfo(
-            decoded.Width,
-            decoded.Height,
+            outputWidth,
+            outputHeight,
             SKColorType.Bgra8888,
             SKAlphaType.Premul);
         using var normalized = new SKBitmap(imageInfo);
@@ -40,9 +70,8 @@ public sealed class SkiaImagePreviewLoader : IImagePreviewLoader
             canvas.Clear(SKColors.Transparent);
             canvas.DrawBitmap(
                 decoded,
-                0,
-                0,
-                new SKSamplingOptions(SKFilterMode.Nearest, SKMipmapMode.None),
+                new SKRect(0, 0, outputWidth, outputHeight),
+                new SKSamplingOptions(SKFilterMode.Linear, SKMipmapMode.None),
                 null);
             canvas.Flush();
         }
