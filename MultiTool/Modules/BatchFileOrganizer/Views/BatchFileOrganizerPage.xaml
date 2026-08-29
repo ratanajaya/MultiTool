@@ -158,10 +158,10 @@
                      ScrollViewer.VerticalScrollBarVisibility="Auto"
                      PreviewMouseLeftButtonDown="HandleFileMouseDown"
                      PreviewMouseMove="HandleFileMouseMove"
+                     PreviewMouseLeftButtonUp="HandleFileMouseUp"
+                     PreviewMouseWheel="HandleFileMouseWheel"
                      PreviewKeyDown="HandleFileKeyDown"
-                     DragOver="HandleFileDragOver"
-                     DragLeave="HandleFileDragLeave"
-                     Drop="HandleFileDrop">
+                     LostMouseCapture="HandleFileLostMouseCapture">
               <ListBox.ItemsPanel>
                 <ItemsPanelTemplate>
                   <WrapPanel Orientation="Horizontal"
