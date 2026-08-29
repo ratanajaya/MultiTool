@@ -9,4 +9,6 @@ public interface IBatchFileSystem
     IReadOnlyList<string> EnumerateTopLevelFiles(string folderPath);
 
     void MoveFile(string sourcePath, string destinationPath);
+
+    void DeleteFile(string path);
 }

@@ -2,6 +2,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using MultiTool.Presentation.ViewModels;
 using DataFormats = System.Windows.DataFormats;
@@ -10,6 +11,7 @@ using DragDrop = System.Windows.DragDrop;
 using DragDropEffects = System.Windows.DragDropEffects;
 using DragEventArgs = System.Windows.DragEventArgs;
 using IDataObject = System.Windows.IDataObject;
+using KeyEventArgs = System.Windows.Input.KeyEventArgs;
 using MouseEventArgs = System.Windows.Input.MouseEventArgs;
 using Point = System.Windows.Point;
 using UserControl = System.Windows.Controls.UserControl;
@@ -22,6 +24,7 @@ public partial class BatchFileOrganizerPage : UserControl
     private Point _dragStart;
     private BatchFileItem? _dragCandidate;
     private BatchFileItem? _dropTarget;
+    private ScrollViewer? _fileScrollViewer;
 
     public BatchFileOrganizerPage()
     {
@@ -30,7 +33,7 @@ public partial class BatchFileOrganizerPage : UserControl
 
     private void HandleFolderDragOver(object sender, DragEventArgs eventArgs)
     {
-        if (DataContext is BatchFileOrganizerViewModel { IsRenameDialogOpen: true })
+        if (DataContext is BatchFileOrganizerViewModel { HasOpenDialog: true })
         {
             eventArgs.Effects = DragDropEffects.None;
             eventArgs.Handled = true;
@@ -50,7 +53,7 @@ public partial class BatchFileOrganizerPage : UserControl
 
     private async void HandleFolderDrop(object sender, DragEventArgs eventArgs)
     {
-        if (DataContext is BatchFileOrganizerViewModel { IsRenameDialogOpen: true })
+        if (DataContext is BatchFileOrganizerViewModel { HasOpenDialog: true })
         {
             eventArgs.Effects = DragDropEffects.None;
             eventArgs.Handled = true;
@@ -127,9 +130,67 @@ public partial class BatchFileOrganizerPage : UserControl
             .Where(selectedItems.Contains)
             .ToArray();
         var data = new DataObject(ReorderDataFormat, draggedItems);
-        DragDrop.DoDragDrop(container, data, DragDropEffects.Move);
-        _dragCandidate = null;
-        ClearDropIndicator();
+        ComponentDispatcher.ThreadFilterMessage += HandleDragThreadMessage;
+        try
+        {
+            DragDrop.DoDragDrop(container, data, DragDropEffects.Move);
+        }
+        finally
+        {
+            ComponentDispatcher.ThreadFilterMessage -= HandleDragThreadMessage;
+            _dragCandidate = null;
+            ClearDropIndicator();
+        }
+    }
+
+    private void HandleFileKeyDown(object sender, KeyEventArgs eventArgs)
+    {
+        if (eventArgs.Key != Key.Delete
+            || DataContext is not BatchFileOrganizerViewModel { CanEdit: true } viewModel)
+        {
+            return;
+        }
+
+        var selectedFiles = FileList.SelectedItems
+            .OfType<BatchFileItem>()
+            .ToArray();
+        if (selectedFiles.Length == 0)
+        {
+            return;
+        }
+
+        viewModel.RequestDeleteFiles(selectedFiles);
+        eventArgs.Handled = viewModel.IsDeleteConfirmationOpen;
+    }
+
+    private void HandleDragThreadMessage(ref MSG message, ref bool handled)
+    {
+        const int MouseWheelMessage = 0x020A;
+        const double WheelDelta = 120.0;
+        if (message.message != MouseWheelMessage)
+        {
+            return;
+        }
+
+        var delta = unchecked((short)((message.wParam.ToInt64() >> 16) & 0xffff));
+        if (delta == 0)
+        {
+            return;
+        }
+
+        _fileScrollViewer ??= FindDescendant<ScrollViewer>(FileList);
+        if (_fileScrollViewer is null)
+        {
+            return;
+        }
+
+        var wheelLines = SystemParameters.WheelScrollLines;
+        var distancePerNotch = wheelLines < 0
+            ? _fileScrollViewer.ViewportHeight
+            : Math.Max(1, wheelLines) * 48.0;
+        var offset = _fileScrollViewer.VerticalOffset - (delta / WheelDelta * distancePerNotch);
+        _fileScrollViewer.ScrollToVerticalOffset(offset);
+        handled = true;
     }
 
     private void HandleFileDragOver(object sender, DragEventArgs eventArgs)
@@ -241,6 +302,26 @@ public partial class BatchFileOrganizerPage : UserControl
             }
 
             current = VisualTreeHelper.GetParent(current);
+        }
+
+        return null;
+    }
+
+    private static T? FindDescendant<T>(DependencyObject current) where T : DependencyObject
+    {
+        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(current); index++)
+        {
+            var child = VisualTreeHelper.GetChild(current, index);
+            if (child is T match)
+            {
+                return match;
+            }
+
+            var descendant = FindDescendant<T>(child);
+            if (descendant is not null)
+            {
+                return descendant;
+            }
         }
 
         return null;

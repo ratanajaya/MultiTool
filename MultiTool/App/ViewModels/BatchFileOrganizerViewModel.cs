@@ -24,6 +24,8 @@ public sealed class BatchFileOrganizerViewModel : INotifyPropertyChanged
     private readonly AsyncRelayCommand _openRenameDialogCommand;
     private readonly AsyncRelayCommand _closeRenameDialogCommand;
     private readonly AsyncRelayCommand _renameCommand;
+    private readonly AsyncRelayCommand _confirmDeleteCommand;
+    private readonly AsyncRelayCommand _cancelDeleteCommand;
     private string _folderPath = string.Empty;
     private BatchFileItem? _selectedFile;
     private string _prefix = "File_";
@@ -37,11 +39,17 @@ public sealed class BatchFileOrganizerViewModel : INotifyPropertyChanged
     private bool _isPreviewLoading;
     private bool _isRenameDialogOpen;
     private string _renameOperationMessage = string.Empty;
+    private bool _isDeleteConfirmationOpen;
+    private string _deleteConfirmationHeading = string.Empty;
+    private string _deleteConfirmationMessage = string.Empty;
+    private IReadOnlyList<BatchFileItem> _pendingDeleteFiles = [];
     private BatchRenamePlan _currentPlan = new();
     private CancellationTokenSource? _previewCancellation;
     private CancellationTokenSource? _thumbnailCancellation;
     private CancellationTokenSource? _renameCancellation;
     private Task<BatchRenameResult>? _activeRenameTask;
+    private CancellationTokenSource? _deleteCancellation;
+    private Task? _activeDeleteTask;
     private int _sessionGeneration;
 
     public BatchFileOrganizerViewModel(
@@ -54,10 +62,10 @@ public sealed class BatchFileOrganizerViewModel : INotifyPropertyChanged
         _renameService = renameService;
         _folderPicker = folderPicker;
         _previewLoader = previewLoader;
-        _browseCommand = new AsyncRelayCommand(BrowseAsync, () => !IsBusy && !IsRenameDialogOpen);
+        _browseCommand = new AsyncRelayCommand(BrowseAsync, () => !IsBusy && !HasOpenDialog);
         _reloadCommand = new AsyncRelayCommand(
             ReloadAsync,
-            () => HasFolder && !IsBusy && !IsRenameDialogOpen);
+            () => HasFolder && !IsBusy && !HasOpenDialog);
         _openRenameDialogCommand = new AsyncRelayCommand(
             OpenRenameDialogAsync,
             () => CanOpenRenameDialog);
@@ -65,6 +73,10 @@ public sealed class BatchFileOrganizerViewModel : INotifyPropertyChanged
             CloseRenameDialogAsync,
             () => IsRenameDialogOpen && !IsBusy);
         _renameCommand = new AsyncRelayCommand(RenameAsync, () => CanRename);
+        _confirmDeleteCommand = new AsyncRelayCommand(DeleteConfirmedAsync, () => CanDelete);
+        _cancelDeleteCommand = new AsyncRelayCommand(
+            CancelDeleteAsync,
+            () => IsDeleteConfirmationOpen && !IsBusy);
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -81,6 +93,7 @@ public sealed class BatchFileOrganizerViewModel : INotifyPropertyChanged
                 OnPropertyChanged(nameof(HasFolder));
                 OnPropertyChanged(nameof(CanEdit));
                 OnPropertyChanged(nameof(CanOpenRenameDialog));
+                OnPropertyChanged(nameof(CanDelete));
                 RaiseCommandStates();
             }
         }
@@ -180,6 +193,7 @@ public sealed class BatchFileOrganizerViewModel : INotifyPropertyChanged
                 OnPropertyChanged(nameof(CanEdit));
                 OnPropertyChanged(nameof(CanRename));
                 OnPropertyChanged(nameof(CanOpenRenameDialog));
+                OnPropertyChanged(nameof(CanDelete));
                 RaiseCommandStates();
             }
         }
@@ -201,6 +215,7 @@ public sealed class BatchFileOrganizerViewModel : INotifyPropertyChanged
                 OnPropertyChanged(nameof(CanEdit));
                 OnPropertyChanged(nameof(CanRename));
                 OnPropertyChanged(nameof(CanOpenRenameDialog));
+                OnPropertyChanged(nameof(HasOpenDialog));
                 RaiseCommandStates();
             }
         }
@@ -212,13 +227,43 @@ public sealed class BatchFileOrganizerViewModel : INotifyPropertyChanged
         private set => SetField(ref _renameOperationMessage, value);
     }
 
-    public bool CanEdit => HasFolder && !IsBusy && !IsRenameDialogOpen;
+    public bool IsDeleteConfirmationOpen
+    {
+        get => _isDeleteConfirmationOpen;
+        private set
+        {
+            if (SetField(ref _isDeleteConfirmationOpen, value))
+            {
+                OnPropertyChanged(nameof(HasOpenDialog));
+                OnPropertyChanged(nameof(CanEdit));
+                OnPropertyChanged(nameof(CanOpenRenameDialog));
+                OnPropertyChanged(nameof(CanDelete));
+                RaiseCommandStates();
+            }
+        }
+    }
+
+    public string DeleteConfirmationHeading
+    {
+        get => _deleteConfirmationHeading;
+        private set => SetField(ref _deleteConfirmationHeading, value);
+    }
+
+    public string DeleteConfirmationMessage
+    {
+        get => _deleteConfirmationMessage;
+        private set => SetField(ref _deleteConfirmationMessage, value);
+    }
+
+    public bool HasOpenDialog => IsRenameDialogOpen || IsDeleteConfirmationOpen;
+
+    public bool CanEdit => HasFolder && !IsBusy && !HasOpenDialog;
 
     public bool CanOpenRenameDialog =>
         HasFolder
         && Files.Count > 0
         && !IsBusy
-        && !IsRenameDialogOpen;
+        && !HasOpenDialog;
 
     public bool CanRename =>
         HasFolder
@@ -228,6 +273,11 @@ public sealed class BatchFileOrganizerViewModel : INotifyPropertyChanged
         && _currentPlan.IsValid
         && _currentPlan.HasChanges
         && string.IsNullOrWhiteSpace(ValidationMessage);
+
+    public bool CanDelete =>
+        IsDeleteConfirmationOpen
+        && _pendingDeleteFiles.Count > 0
+        && !IsBusy;
 
     public ICommand BrowseCommand => _browseCommand;
 
@@ -239,11 +289,15 @@ public sealed class BatchFileOrganizerViewModel : INotifyPropertyChanged
 
     public ICommand RenameCommand => _renameCommand;
 
+    public ICommand ConfirmDeleteCommand => _confirmDeleteCommand;
+
+    public ICommand CancelDeleteCommand => _cancelDeleteCommand;
+
     public async Task LoadFolderAsync(string folderPath)
     {
         if (IsBusy)
         {
-            Status = "Wait for the current rename operation to finish.";
+            Status = "Wait for the current file operation to finish.";
             return;
         }
 
@@ -256,6 +310,7 @@ public sealed class BatchFileOrganizerViewModel : INotifyPropertyChanged
         var fullPath = Path.GetFullPath(folderPath);
         IsRenameDialogOpen = false;
         RenameOperationMessage = string.Empty;
+        ClearDeleteConfirmation();
         var generation = ++_sessionGeneration;
         CancelPreview();
         Status = "Loading folder...";
@@ -338,12 +393,47 @@ public sealed class BatchFileOrganizerViewModel : INotifyPropertyChanged
 
     public void ReportFolderDropError(string message) => Status = message;
 
+    public void RequestDeleteFiles(IEnumerable<BatchFileItem> files)
+    {
+        if (!CanEdit)
+        {
+            return;
+        }
+
+        var requestedFiles = files.ToHashSet();
+        var orderedFiles = Files.Where(requestedFiles.Contains).ToArray();
+        if (orderedFiles.Length == 0)
+        {
+            return;
+        }
+
+        _pendingDeleteFiles = orderedFiles;
+        DeleteConfirmationHeading = orderedFiles.Length == 1
+            ? "Delete this file?"
+            : $"Delete {orderedFiles.Length} files?";
+        var displayedNames = orderedFiles
+            .Take(4)
+            .Select(file => $"• {file.CurrentName}")
+            .ToList();
+        if (orderedFiles.Length > displayedNames.Count)
+        {
+            displayedNames.Add($"• and {orderedFiles.Length - displayedNames.Count} more");
+        }
+
+        DeleteConfirmationMessage =
+            $"These files will be permanently deleted:{Environment.NewLine}{Environment.NewLine}"
+            + string.Join(Environment.NewLine, displayedNames)
+            + $"{Environment.NewLine}{Environment.NewLine}This cannot be undone.";
+        IsDeleteConfirmationOpen = true;
+    }
+
     public void LeaveModule()
     {
         _sessionGeneration++;
         CancelPreview();
         CancelThumbnailLoading();
         _renameCancellation?.Cancel();
+        _deleteCancellation?.Cancel();
         ClearFolderState();
         Status = "Drop a folder here or choose Browse.";
     }
@@ -362,6 +452,20 @@ public sealed class BatchFileOrganizerViewModel : INotifyPropertyChanged
             {
                 // RenameCore converts move failures into a result. Shutdown must still continue
                 // if validation or another unexpected failure escapes before that point.
+            }
+        }
+
+        var activeDelete = _activeDeleteTask;
+        if (activeDelete is not null)
+        {
+            try
+            {
+                await activeDelete;
+            }
+            catch
+            {
+                // Delete failures are reported per file. Shutdown must continue if an
+                // unexpected failure escapes before those results are produced.
             }
         }
     }
@@ -397,6 +501,146 @@ public sealed class BatchFileOrganizerViewModel : INotifyPropertyChanged
         IsRenameDialogOpen = false;
         RenameOperationMessage = string.Empty;
         return Task.CompletedTask;
+    }
+
+    private Task CancelDeleteAsync()
+    {
+        ClearDeleteConfirmation();
+        return Task.CompletedTask;
+    }
+
+    private async Task DeleteConfirmedAsync()
+    {
+        if (!CanDelete)
+        {
+            return;
+        }
+
+        var files = _pendingDeleteFiles.ToArray();
+        var generation = _sessionGeneration;
+        var firstIndex = files
+            .Select(Files.IndexOf)
+            .Where(index => index >= 0)
+            .DefaultIfEmpty(0)
+            .Min();
+        CancelPreview();
+        CancelThumbnailLoading();
+        _deleteCancellation?.Dispose();
+        var cancellation = new CancellationTokenSource();
+        _deleteCancellation = cancellation;
+        IsBusy = true;
+        Status = files.Length == 1 ? "Deleting file..." : $"Deleting {files.Length} files...";
+        try
+        {
+            var deleteTask = Task.Run(
+                () => DeleteFiles(files, cancellation.Token),
+                CancellationToken.None);
+            _activeDeleteTask = deleteTask;
+            var results = await deleteTask;
+            if (generation != _sessionGeneration)
+            {
+                return;
+            }
+
+            var deletedFiles = results
+                .Where(result => result.Error is null)
+                .Select(result => result.File)
+                .ToArray();
+            var failedFiles = results
+                .Where(result => result.Error is not null)
+                .ToArray();
+
+            SelectedFile = null;
+            foreach (var file in deletedFiles)
+            {
+                Files.Remove(file);
+            }
+
+            OnPropertyChanged(nameof(FileCountText));
+            OnPropertyChanged(nameof(CanOpenRenameDialog));
+            RecomputePlan();
+            StartThumbnailLoading(Files.ToArray());
+
+            var failedSelection = failedFiles
+                .Select(result => result.File)
+                .FirstOrDefault(Files.Contains);
+            var nextSelection = failedSelection ?? Files.ElementAtOrDefault(
+                Math.Min(firstIndex, Math.Max(0, Files.Count - 1)));
+            if (nextSelection is null)
+            {
+                PreviewSource = null;
+                PreviewMessage = "This folder contains no files.";
+            }
+            else
+            {
+                SelectedFile = nextSelection;
+            }
+
+            Status = CreateDeleteResultMessage(deletedFiles.Length, failedFiles);
+            ClearDeleteConfirmation();
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
+        }
+        finally
+        {
+            IsBusy = false;
+            if (ReferenceEquals(_deleteCancellation, cancellation))
+            {
+                _deleteCancellation = null;
+            }
+
+            cancellation.Dispose();
+            _activeDeleteTask = null;
+        }
+    }
+
+    private List<(BatchFileItem File, string? Error)> DeleteFiles(
+        IReadOnlyList<BatchFileItem> files,
+        CancellationToken cancellationToken)
+    {
+        var results = new List<(BatchFileItem File, string? Error)>();
+        foreach (var file in files)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            try
+            {
+                _fileSystem.DeleteFile(file.CurrentPath);
+                results.Add((file, null));
+            }
+            catch (Exception exception)
+            {
+                results.Add((file, exception.Message));
+            }
+        }
+
+        return results;
+    }
+
+    private static string CreateDeleteResultMessage(
+        int deletedCount,
+        IReadOnlyList<(BatchFileItem File, string? Error)> failedFiles)
+    {
+        if (failedFiles.Count == 0)
+        {
+            return deletedCount == 1 ? "Deleted 1 file." : $"Deleted {deletedCount} files.";
+        }
+
+        var failureDetails = string.Join(
+            "; ",
+            failedFiles.Take(3).Select(result => $"{result.File.CurrentName}: {result.Error}"));
+        var summary = deletedCount == 0
+            ? $"No files were deleted. {failedFiles.Count} failed."
+            : $"Deleted {deletedCount} file(s); {failedFiles.Count} failed.";
+        return $"{summary} {failureDetails}";
+    }
+
+    private void ClearDeleteConfirmation()
+    {
+        _pendingDeleteFiles = [];
+        DeleteConfirmationHeading = string.Empty;
+        DeleteConfirmationMessage = string.Empty;
+        IsDeleteConfirmationOpen = false;
     }
 
     private async Task RenameAsync()
@@ -518,6 +762,7 @@ public sealed class BatchFileOrganizerViewModel : INotifyPropertyChanged
         ValidationMessage = string.Empty;
         IsRenameDialogOpen = false;
         RenameOperationMessage = string.Empty;
+        ClearDeleteConfirmation();
         _currentPlan = new BatchRenamePlan();
         OnPropertyChanged(nameof(FileCountText));
         OnPropertyChanged(nameof(CanRename));
@@ -709,6 +954,8 @@ public sealed class BatchFileOrganizerViewModel : INotifyPropertyChanged
         _openRenameDialogCommand.RaiseCanExecuteChanged();
         _closeRenameDialogCommand.RaiseCanExecuteChanged();
         _renameCommand.RaiseCanExecuteChanged();
+        _confirmDeleteCommand.RaiseCanExecuteChanged();
+        _cancelDeleteCommand.RaiseCanExecuteChanged();
     }
 
     private bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)

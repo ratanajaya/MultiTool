@@ -7,6 +7,7 @@
              PreviewDrop="HandleFolderDrop">
   <UserControl.InputBindings>
     <KeyBinding Key="Escape" Command="{Binding CloseRenameDialogCommand}" />
+    <KeyBinding Key="Enter" Command="{Binding ConfirmDeleteCommand}" />
   </UserControl.InputBindings>
 
   <Grid Margin="14">
@@ -21,6 +22,9 @@
           <Setter Property="IsEnabled" Value="True" />
           <Style.Triggers>
             <DataTrigger Binding="{Binding IsRenameDialogOpen}" Value="True">
+              <Setter Property="IsEnabled" Value="False" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding IsDeleteConfirmationOpen}" Value="True">
               <Setter Property="IsEnabled" Value="False" />
             </DataTrigger>
           </Style.Triggers>
@@ -154,6 +158,7 @@
                      ScrollViewer.VerticalScrollBarVisibility="Auto"
                      PreviewMouseLeftButtonDown="HandleFileMouseDown"
                      PreviewMouseMove="HandleFileMouseMove"
+                     PreviewKeyDown="HandleFileKeyDown"
                      DragOver="HandleFileDragOver"
                      DragLeave="HandleFileDragLeave"
                      Drop="HandleFileDrop">
@@ -419,6 +424,70 @@
                     Margin="0"
                     Background="{StaticResource AccentBrush}"
                     BorderBrush="{StaticResource AccentBrush}"
+                    Foreground="White" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </Grid>
+
+    <Grid Grid.RowSpan="2"
+          Panel.ZIndex="21"
+          Background="#660F172A">
+      <Grid.Style>
+        <Style TargetType="Grid">
+          <Setter Property="Visibility" Value="Collapsed" />
+          <Style.Triggers>
+            <DataTrigger Binding="{Binding IsDeleteConfirmationOpen}" Value="True">
+              <Setter Property="Visibility" Value="Visible" />
+            </DataTrigger>
+          </Style.Triggers>
+        </Style>
+      </Grid.Style>
+
+      <Border Width="390"
+              Padding="20"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Center"
+              Background="White"
+              BorderBrush="#CBD5E1"
+              BorderThickness="1"
+              CornerRadius="10">
+        <StackPanel>
+          <TextBlock Text="{Binding DeleteConfirmationHeading}"
+                     FontSize="19"
+                     FontWeight="SemiBold" />
+          <TextBlock Text="{Binding DeleteConfirmationMessage}"
+                     Foreground="#475569"
+                     TextWrapping="Wrap"
+                     Margin="0,8,0,0"
+                     MaxHeight="220" />
+          <ProgressBar IsIndeterminate="True"
+                       Height="4"
+                       Margin="0,14,0,0">
+            <ProgressBar.Style>
+              <Style TargetType="ProgressBar">
+                <Setter Property="Visibility" Value="Collapsed" />
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding IsBusy}" Value="True">
+                    <Setter Property="Visibility" Value="Visible" />
+                  </DataTrigger>
+                </Style.Triggers>
+              </Style>
+            </ProgressBar.Style>
+          </ProgressBar>
+          <StackPanel Orientation="Horizontal"
+                      HorizontalAlignment="Right"
+                      Margin="0,18,0,0">
+            <Button Content="Cancel"
+                    Command="{Binding CancelDeleteCommand}"
+                    MinWidth="0"
+                    Margin="0,0,8,0" />
+            <Button Content="Delete"
+                    Command="{Binding ConfirmDeleteCommand}"
+                    MinWidth="0"
+                    Margin="0"
+                    Background="#DC2626"
+                    BorderBrush="#DC2626"
                     Foreground="White" />
           </StackPanel>
         </StackPanel>

@@ -180,5 +180,7 @@ public sealed class BatchFileRenameServiceTests
 
             Files.Add(destination, contents);
         }
+
+        public void DeleteFile(string path) => Files.Remove(Path.GetFullPath(path));
     }
 }

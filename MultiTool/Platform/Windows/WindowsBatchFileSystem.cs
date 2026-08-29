@@ -14,4 +14,6 @@ public sealed class WindowsBatchFileSystem : IBatchFileSystem
 
     public void MoveFile(string sourcePath, string destinationPath) =>
         File.Move(sourcePath, destinationPath, overwrite: false);
+
+    public void DeleteFile(string path) => File.Delete(path);
 }

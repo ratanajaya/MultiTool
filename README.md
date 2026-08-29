@@ -7,7 +7,9 @@ shutdown, sleep, or hibernate action, show configurable usage reminders, and
 create compressed whole-deployment MongoDB backups with `mongodump`. It also
 includes a batch file organizer with a multi-select, drag-reorderable thumbnail
 grid, contained image previews, and safe Prefix+Number renames configured in a
-modal.
+modal. Selected files can be permanently deleted with the Delete key after an
+explicit confirmation, and the tile list remains mouse-wheel scrollable during
+dragging.
 
 ## Requirements
 

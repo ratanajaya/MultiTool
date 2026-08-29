@@ -50,6 +50,89 @@ public sealed class BatchFileOrganizerViewModelTests
     }
 
     [TestMethod]
+    public async Task RequestDeleteFiles_OpensConfirmationWithoutDeletingFiles()
+    {
+        var fixture = new Fixture("a.txt", "b.txt");
+        await fixture.ViewModel.LoadFolderAsync(fixture.Folder);
+
+        fixture.ViewModel.RequestDeleteFiles(fixture.ViewModel.Files);
+
+        Assert.IsTrue(fixture.ViewModel.IsDeleteConfirmationOpen);
+        Assert.IsFalse(fixture.ViewModel.CanEdit);
+        Assert.AreEqual("Delete 2 files?", fixture.ViewModel.DeleteConfirmationHeading);
+        StringAssert.Contains(fixture.ViewModel.DeleteConfirmationMessage, "a.txt");
+        StringAssert.Contains(fixture.ViewModel.DeleteConfirmationMessage, "cannot be undone");
+        Assert.AreEqual(2, fixture.FileSystem.Files.Count);
+    }
+
+    [TestMethod]
+    public async Task CancelDelete_ClosesConfirmationWithoutDeletingFiles()
+    {
+        var fixture = new Fixture("a.txt");
+        await fixture.ViewModel.LoadFolderAsync(fixture.Folder);
+        fixture.ViewModel.RequestDeleteFiles(fixture.ViewModel.Files);
+
+        fixture.ViewModel.CancelDeleteCommand.Execute(null);
+
+        Assert.IsFalse(fixture.ViewModel.IsDeleteConfirmationOpen);
+        Assert.IsTrue(fixture.ViewModel.CanEdit);
+        Assert.AreEqual(1, fixture.FileSystem.Files.Count);
+    }
+
+    [TestMethod]
+    public async Task ConfirmDelete_DeletesSelectionAndRecomputesPositions()
+    {
+        var fixture = new Fixture("a.txt", "b.txt", "c.txt");
+        await fixture.ViewModel.LoadFolderAsync(fixture.Folder);
+        fixture.ViewModel.RequestDeleteFiles(
+            new[] { fixture.ViewModel.Files[0], fixture.ViewModel.Files[2] });
+
+        fixture.ViewModel.ConfirmDeleteCommand.Execute(null);
+        await WaitUntilAsync(() => !fixture.ViewModel.IsBusy);
+
+        Assert.IsFalse(fixture.ViewModel.IsDeleteConfirmationOpen);
+        CollectionAssert.AreEqual(
+            new[] { "b.txt" },
+            fixture.ViewModel.Files.Select(file => file.CurrentName).ToArray());
+        Assert.AreEqual(1, fixture.ViewModel.Files[0].Position);
+        Assert.AreEqual("Deleted 2 files.", fixture.ViewModel.Status);
+        Assert.AreEqual(1, fixture.FileSystem.Files.Count);
+    }
+
+    [TestMethod]
+    public async Task ConfirmDelete_PartialFailureKeepsFailedFileAndReportsIt()
+    {
+        var fixture = new Fixture("a.txt", "b.txt");
+        await fixture.ViewModel.LoadFolderAsync(fixture.Folder);
+        fixture.FileSystem.FailingDeletes.Add(fixture.ViewModel.Files[1].CurrentPath);
+        fixture.ViewModel.RequestDeleteFiles(fixture.ViewModel.Files);
+
+        fixture.ViewModel.ConfirmDeleteCommand.Execute(null);
+        await WaitUntilAsync(() => !fixture.ViewModel.IsBusy);
+
+        CollectionAssert.AreEqual(
+            new[] { "b.txt" },
+            fixture.ViewModel.Files.Select(file => file.CurrentName).ToArray());
+        StringAssert.Contains(fixture.ViewModel.Status, "1 failed");
+        StringAssert.Contains(fixture.ViewModel.Status, "b.txt");
+    }
+
+    [TestMethod]
+    public async Task ConfirmDelete_AllFilesShowsEmptyFolderState()
+    {
+        var fixture = new Fixture("a.txt");
+        await fixture.ViewModel.LoadFolderAsync(fixture.Folder);
+        fixture.ViewModel.RequestDeleteFiles(fixture.ViewModel.Files);
+
+        fixture.ViewModel.ConfirmDeleteCommand.Execute(null);
+        await WaitUntilAsync(() => !fixture.ViewModel.IsBusy);
+
+        Assert.AreEqual(0, fixture.ViewModel.Files.Count);
+        Assert.IsNull(fixture.ViewModel.SelectedFile);
+        Assert.AreEqual("This folder contains no files.", fixture.ViewModel.PreviewMessage);
+    }
+
+    [TestMethod]
     public async Task LeaveModule_ClearsEveryFolderDependentValue()
     {
         var fixture = new Fixture("photo.jpg", "notes.txt");
@@ -65,6 +148,19 @@ public sealed class BatchFileOrganizerViewModelTests
         Assert.IsNull(fixture.ViewModel.PreviewSource);
         Assert.IsFalse(fixture.ViewModel.IsRenameDialogOpen);
         Assert.AreEqual("Drop a folder here or choose Browse.", fixture.ViewModel.Status);
+    }
+
+    [TestMethod]
+    public async Task LeaveModule_ClosesDeleteConfirmationWithoutDeletingFiles()
+    {
+        var fixture = new Fixture("notes.txt");
+        await fixture.ViewModel.LoadFolderAsync(fixture.Folder);
+        fixture.ViewModel.RequestDeleteFiles(fixture.ViewModel.Files);
+
+        fixture.ViewModel.LeaveModule();
+
+        Assert.IsFalse(fixture.ViewModel.IsDeleteConfirmationOpen);
+        Assert.AreEqual(1, fixture.FileSystem.Files.Count);
     }
 
     [TestMethod]
@@ -193,6 +289,8 @@ public sealed class BatchFileOrganizerViewModelTests
 
         public bool FailMoves { get; set; }
 
+        public HashSet<string> FailingDeletes { get; } = new(StringComparer.OrdinalIgnoreCase);
+
         public bool DirectoryExists(string path) => Folders.Contains(Path.GetFullPath(path));
 
         public bool FileExists(string path) => Files.Contains(Path.GetFullPath(path));
@@ -213,6 +311,17 @@ public sealed class BatchFileOrganizerViewModelTests
 
             Files.Remove(Path.GetFullPath(sourcePath));
             Files.Add(Path.GetFullPath(destinationPath));
+        }
+
+        public void DeleteFile(string path)
+        {
+            var fullPath = Path.GetFullPath(path);
+            if (FailingDeletes.Contains(fullPath))
+            {
+                throw new IOException("Injected delete failure.");
+            }
+
+            Files.Remove(fullPath);
         }
     }
 
