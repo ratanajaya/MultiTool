@@ -4,7 +4,9 @@ MultiTool is a Windows tray application for small background utilities. The
 completed modules can periodically play a near-silent output burst, hold a
 microphone capture stream open to prevent device power saving, schedule one
 shutdown, sleep, or hibernate action, show configurable usage reminders, and
-create compressed whole-deployment MongoDB backups with `mongodump`.
+create compressed whole-deployment MongoDB backups with `mongodump`. It also
+includes a batch file organizer for drag-ordering a folder's files, previewing
+common image formats, and applying safe Prefix+Number renames.
 
 ## Requirements
 

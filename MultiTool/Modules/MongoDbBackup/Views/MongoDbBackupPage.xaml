@@ -57,7 +57,7 @@
               <ColumnDefinition Width="*" />
               <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
-            <TextBox Grid.Column="0" Text="{Binding ArchivePath}" IsReadOnly="True" />
+            <TextBox Grid.Column="0" Text="{Binding ArchivePath, Mode=OneWay}" IsReadOnly="True" />
             <Button Grid.Column="1" Content="Save as" Command="{Binding BrowseArchiveCommand}" />
           </Grid>
 

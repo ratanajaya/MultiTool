@@ -17,7 +17,8 @@ public sealed class ModuleNavigationItemTests
                 ModulePage.MicrophoneKeepAwake,
                 ModulePage.PowerTimer,
                 ModulePage.UsageReminders,
-                ModulePage.MongoDbBackup
+                ModulePage.MongoDbBackup,
+                ModulePage.BatchFileOrganizer
             },
             navigation.Select(item => item.Page).ToArray());
         Assert.AreEqual("Available", navigation[0].Availability);
@@ -25,5 +26,6 @@ public sealed class ModuleNavigationItemTests
         Assert.AreEqual("Available", navigation[2].Availability);
         Assert.AreEqual("Available", navigation[3].Availability);
         Assert.AreEqual("Available", navigation[4].Availability);
+        Assert.AreEqual("Available", navigation[5].Availability);
     }
 }

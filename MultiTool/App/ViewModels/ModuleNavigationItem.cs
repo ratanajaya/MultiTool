@@ -11,6 +11,7 @@ public sealed record ModuleNavigationItem(
         new(ModulePage.MicrophoneKeepAwake, "Microphone keep-awake", "Available"),
         new(ModulePage.PowerTimer, "Power timer", "Available"),
         new(ModulePage.UsageReminders, "Usage reminders", "Available"),
-        new(ModulePage.MongoDbBackup, "MongoDB backup", "Available")
+        new(ModulePage.MongoDbBackup, "MongoDB backup", "Available"),
+        new(ModulePage.BatchFileOrganizer, "Batch file organizer", "Available")
     ];
 }

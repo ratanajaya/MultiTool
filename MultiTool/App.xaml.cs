@@ -6,6 +6,7 @@ using MultiTool.Presentation.ViewModels;
 using MultiTool.Core.Scheduling;
 using MultiTool.Core.Settings;
 using MultiTool.Modules.AudioOutputKeepAlive;
+using MultiTool.Modules.BatchFileOrganizer;
 using MultiTool.Modules.MicrophoneKeepAwake;
 using MultiTool.Modules.MongoDbBackup;
 using MultiTool.Modules.PowerTimer;
@@ -72,13 +73,20 @@ public partial class App : System.Windows.Application
             var mongoDbBackupViewModel = new MongoDbBackupViewModel(
                 mongoDbBackupModule,
                 new WindowsMongoDbBackupFileDialogService());
+            var batchFileSystem = new WindowsBatchFileSystem();
+            var batchFileOrganizerViewModel = new BatchFileOrganizerViewModel(
+                batchFileSystem,
+                new BatchFileRenameService(batchFileSystem),
+                new WindowsBatchFileOrganizerFolderPicker(),
+                new SkiaImagePreviewLoader());
             _viewModel = new MainViewModel(
                 module,
                 settingsStore,
                 microphoneViewModel,
                 powerTimerViewModel,
                 usageReminderViewModel,
-                mongoDbBackupViewModel);
+                mongoDbBackupViewModel,
+                batchFileOrganizerViewModel);
             _mainWindow = new MainWindow(_viewModel);
             _mainWindow.Closing += HandleWindowClosing;
 

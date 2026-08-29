@@ -6,5 +6,6 @@ public enum ModulePage
     MicrophoneKeepAwake,
     PowerTimer,
     UsageReminders,
-    MongoDbBackup
+    MongoDbBackup,
+    BatchFileOrganizer
 }

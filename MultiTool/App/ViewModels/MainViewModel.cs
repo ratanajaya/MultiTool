@@ -35,7 +35,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
         MicrophoneKeepAwakeViewModel microphone,
         PowerTimerViewModel powerTimer,
         UsageReminderViewModel usageReminders,
-        MongoDbBackupViewModel mongoDbBackup)
+        MongoDbBackupViewModel mongoDbBackup,
+        BatchFileOrganizerViewModel batchFileOrganizer)
     {
         _module = module;
         _settingsStore = settingsStore;
@@ -44,6 +45,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         PowerTimer = powerTimer;
         UsageReminders = usageReminders;
         MongoDbBackup = mongoDbBackup;
+        BatchFileOrganizer = batchFileOrganizer;
         _module.StatusChanged += HandleStatusChanged;
 
         NavigationItems = ModuleNavigationItem.CreateDefaultNavigation();
@@ -67,6 +69,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     public MongoDbBackupViewModel MongoDbBackup { get; }
 
+    public BatchFileOrganizerViewModel BatchFileOrganizer { get; }
+
     public IReadOnlyList<ModuleNavigationItem> NavigationItems { get; }
 
     public ModuleNavigationItem SelectedNavigationItem
@@ -74,6 +78,17 @@ public sealed class MainViewModel : INotifyPropertyChanged
         get => _selectedNavigationItem;
         set
         {
+            if (value is null)
+            {
+                return;
+            }
+
+            if (_selectedNavigationItem.Page == ModulePage.BatchFileOrganizer
+                && value.Page != ModulePage.BatchFileOrganizer)
+            {
+                BatchFileOrganizer.LeaveModule();
+            }
+
             if (SetField(ref _selectedNavigationItem, value))
             {
                 OnPropertyChanged(nameof(SelectedPage));
@@ -173,6 +188,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     public async Task ShutdownAsync()
     {
+        await BatchFileOrganizer.ShutdownAsync();
         _module.StatusChanged -= HandleStatusChanged;
         try
         {
