@@ -7,6 +7,7 @@ namespace MultiTool.Presentation.Tray;
 internal sealed class TrayIcon : INotificationService, IDisposable
 {
     private readonly Action _openRequested;
+    private readonly Icon _icon;
     private readonly Forms.NotifyIcon _notifyIcon;
     private string? _activationContext;
 
@@ -19,9 +20,10 @@ internal sealed class TrayIcon : INotificationService, IDisposable
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add("Exit", null, async (_, _) => await exitAsync());
 
+        _icon = LoadIcon();
         _notifyIcon = new Forms.NotifyIcon
         {
-            Icon = SystemIcons.Application,
+            Icon = _icon,
             Text = "MultiTool",
             ContextMenuStrip = menu,
             Visible = true
@@ -52,5 +54,20 @@ internal sealed class TrayIcon : INotificationService, IDisposable
     {
         _notifyIcon.Visible = false;
         _notifyIcon.Dispose();
+        _icon.Dispose();
+    }
+
+    private static Icon LoadIcon()
+    {
+        var resource = System.Windows.Application.GetResourceStream(
+            new Uri("pack://application:,,,/Assets/MultiTool.ico"));
+        if (resource is null)
+        {
+            return (Icon)SystemIcons.Application.Clone();
+        }
+
+        using var resourceStream = resource.Stream;
+        using var icon = new Icon(resourceStream);
+        return (Icon)icon.Clone();
     }
 }

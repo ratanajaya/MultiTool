@@ -10,6 +10,7 @@
         xmlns:viewModels="clr-namespace:MultiTool.Presentation.ViewModels"
         xmlns:views="clr-namespace:MultiTool.Presentation.Views"
         Title="MultiTool"
+        Icon="/Assets/MultiTool.ico"
         Width="1240"
         Height="760"
         MinWidth="1080"
