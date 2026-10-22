@@ -7,9 +7,18 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- WPF owns startup; declare DPI awareness in the manifest before WPF initializes.
+         WinForms is used only for the tray UI, without ApplicationConfiguration.Initialize. -->
+    <NoWarn>$(NoWarn);WFO0003</NoWarn>
     <ApplicationIcon>Assets\MultiTool.ico</ApplicationIcon>
     <AssemblyName>MultiTool</AssemblyName>
     <RootNamespace>MultiTool</RootNamespace>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <OutputPath>C:\Utils\MultiTool\</OutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
   </PropertyGroup>
 
   <ItemGroup>

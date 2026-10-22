@@ -26,9 +26,19 @@ dotnet test MultiTool.Tests/MultiTool.Tests.csproj --no-build
 dotnet run --project MultiTool/MultiTool.csproj
 ```
 
+Release builds write the app directly to `C:\Utils\MultiTool`:
+
+```powershell
+dotnet build MultiTool/MultiTool.csproj --configuration Release --no-restore
+```
+
 Closing the window hides MultiTool in the notification area. Use the tray menu
 to reopen or exit it. Settings are stored in
 `%LOCALAPPDATA%\MultiTool\settings.json`.
+
+MultiTool supports per-monitor DPI scaling and uses pixel-aligned layout and
+display-optimized text in its main window and reminder overlays. After updating,
+fully exit MultiTool from the tray menu and relaunch it to apply DPI changes.
 
 MongoDB connection strings are required for every backup and are never saved in
 MultiTool settings or passed to `mongodump` on its command line.

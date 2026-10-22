@@ -8,6 +8,9 @@
         Background="Transparent"
         ShowInTaskbar="False"
         ShowActivated="False"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
+        TextOptions.TextFormattingMode="Display"
         Topmost="True"
         ResizeMode="NoResize">
   <Window.Resources>

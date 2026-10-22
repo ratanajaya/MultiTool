@@ -16,6 +16,9 @@
         MinWidth="1080"
         MinHeight="600"
         WindowStartupLocation="CenterScreen"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
+        TextOptions.TextFormattingMode="Display"
         Background="#F3F4F6">
   <Grid>
     <Grid.ColumnDefinitions>
